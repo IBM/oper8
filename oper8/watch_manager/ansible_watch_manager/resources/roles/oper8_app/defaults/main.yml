@@ -1,0 +1,13 @@
+---
+manage_ansible_status: false
+operation: add
+log_level: ""
+log_filters: ""
+log_json: false
+dry_run: false
+standalone: false
+log_thread_id: false
+log_file: "{{ full_cr.kind | lower }}.log"
+working_dir:
+version: ""
+enable_ansible_vcs: false

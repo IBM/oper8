@@ -1,0 +1,11 @@
+# Local
+from oper8.test_helpers.helpers import DummyController
+
+
+class {controller_name}(DummyController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            components={components},
+            **kwargs
+        )

@@ -1,0 +1,96 @@
+log_level:
+  type: enum
+  values:
+    [
+      "disable",
+      "off",
+      "error",
+      "warning",
+      "info",
+      "trace",
+      "debug",
+      "debug1",
+      "debug2",
+      "debug3",
+      "debug4",
+    ]
+log_filters:
+  type: str
+log_json:
+  type: bool
+log_thread_id:
+  type: bool
+
+dry_run:
+  type: bool
+working_dir:
+  type: str
+  optional: true
+
+standalone:
+  type: bool
+
+strict_versioning:
+  type: bool
+
+supported_versions:
+  type: list
+  item_type: str
+
+deploy_retries:
+  type: int
+  min: 0
+
+requeue_after_seconds:
+  type: int
+  min: 0
+
+rollout_manager:
+  deploy_threads:
+    type: int
+    optional: true
+    min: 1
+  verify_threads:
+    type: int
+    optional: true
+    min: 1
+
+ansible_watch_manager:
+  log_file_dir:
+    type: str
+    optional: true
+  kill_max_wait:
+    type: number
+    min: 0
+
+python_watch_manager:
+  max_concurrent_reconciles:
+    type: int
+    optional: true
+  reconcile_period:
+    type: str
+
+  process_context:
+    type: str
+  watch_dependent_resources:
+    type: bool
+  filter:
+    type: str
+
+  lock:
+    type:
+      type: str
+
+    name:
+      type: str
+      optional: true
+
+    namespace:
+      type: str
+
+    pod_name:
+      type: str
+      optional: true
+
+    poll_time:
+      type: str

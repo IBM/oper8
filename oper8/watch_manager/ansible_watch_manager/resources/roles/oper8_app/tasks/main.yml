@@ -1,0 +1,95 @@
+---
+# Running oper8 application reconciliation
+# Required vars arguments:
+#   - full_cr: full Custom Resource manifests.
+#   - controller_class: full class path of oper8.Controller inherited class
+- debug:
+    msg: "Starting reconciliation of {{ full_cr.kind }}/{{ ansible_operator_meta.name }}"
+
+- name: Detect VCS configuration
+  # There are three ways to modify the ansible-vcs enablement:
+  #
+  # 1) Define the 'develop_shell' ansible variable in the playbook invocation
+  # 2) Define the per-playbook 'enable_ansible_vcs' variable
+  # 3) Set the ANSIBLE_VCS environment variable
+  when: develop_shell is not defined and "{{ enable_ansible_vcs | default('true', True) }}" != "false" and "{{ lookup('env', 'ANSIBLE_VCS') | default('true', True) }}" != "false"
+  ansible.builtin.set_fact:
+    enable_ansible_vcs: true
+
+- name: "Oper8 Controller"
+  environment:
+    PYTHONPATH: "{{ lookup('env', 'PYTHONPATH') }}:/opt/ansible/app/version/{{ version }}/{{ full_cr.kind | lower }}/{{ ansible_operator_meta.name }}/src"
+  register: reconcile_result
+  k8s_application:
+    # (required) version: This is the version passed through from the CR
+    version: "{{ version }}"
+
+    # (required) controller_class: This is the fully-qualified name of the
+    #   python Applicaiton class that is bound to this operator.
+    controller_class: "{{ controller_class }}"
+
+    # (required) operation: Either "add" for a standard reconcile or "remove"
+    # for a finalizer
+    operation: "{{ operation }}"
+
+    # (required): This template passes the content of the full CR
+    #   which triggered the deploy into the library so that the deploy
+    #   parameters can be parsed there.
+    full_cr: "{{ full_cr }}"
+
+    # (optional) manage_ansible_status: If true, oper8 will emulate the
+    #   status management done natively by ansible based on the readiness
+    #   values of oper8's native status management
+    manage_ansible_status: "{{ manage_ansible_status }}"
+
+    # Enable strict versioning and status.versions.available.versions
+    strict_versioning: "{{ strict_versioning }}"
+
+    # (optional) VCS
+    enable_ansible_vcs: "{{ enable_ansible_vcs }}"
+    ## Logging ##
+
+    # (optional) log_level: This sets the default verbosity level of the
+    #   logging from inside of the k8s_applicaiton library.
+    log_level: "{{ log_level }}"
+
+    # (optional) log_filters: This sets per-channel verbosity levels for the
+    #   logging from inside of the k8s_applicaiton library.
+    log_filters: "{{ log_filters }}"
+
+    # (optional) log_json: This sets the output formatter for
+    #   k8s_application logging to be 'json' rather than 'pretty'
+    log_json: "{{ log_json }}"
+
+    # (optional) log_thread_id: This sets weather to log thread ids or not
+    #   useful for dryrun/multithreaded debugging
+    log_thread_id: "{{ log_thread_id }}"
+
+    # (optional) log_file: This sets the log_file location for oper8 logs
+    log_file: "{{ log_file }}"
+
+    ## Dev / Debug ##
+
+    # (optional) dry_run: This sets the operator to render-only mode and
+    #   will not actually manage the downstream resources.
+    dry_run: "{{ dry_run }}"
+
+    # (optional) standalone: This sets the k8s_applicaiton library to
+    #   operate outside of 'operator' mode, enabling the playbook to be run
+    #   directly from the command line rather than inside of a deployed
+    #   operator.
+    standalone: "{{ standalone }}"
+
+    # (optional) working_dir: This sets a named working directory to be used
+    #   by the k8s_application library rather than letting it create a
+    #   random ephemeral working dir internally.
+    working_dir: "{{ working_dir }}"
+
+- name: Display reconcile result
+  debug:
+    msg: "Reconcile result of {{ full_cr.kind }}/{{ ansible_operator_meta.name }}: {{ reconcile_result }}"
+
+- name: Requeue reconcile request
+  operator_sdk.util.requeue_after:
+    time: "{{ reconcile_result.requeue_after }}"
+  when: reconcile_result.should_requeue | bool
