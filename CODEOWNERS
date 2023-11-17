@@ -1,0 +1,11 @@
+#####################################################
+#
+# List of approvers for oper8 repository
+#
+#####################################################
+#
+# Learn about CODEOWNERS file format:
+#  https://help.github.com/en/articles/about-code-owners
+#
+
+*  @gabe-l-hart @HonakerM
