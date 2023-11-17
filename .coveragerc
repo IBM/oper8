@@ -1,0 +1,3 @@
+[run]
+omit =
+    oper8/test_helpers/**

@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.1.2
+    hooks:
+      - id: prettier
+  - repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+      - id: black
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.11.5
+    hooks:
+      - id: isort
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    # NOTE: This must be kept in sync with pyproject.toml!
+    rev: v0.1.5
+    hooks:
+      # Run the linter.
+      - id: ruff
+      # Run the formatter.
+      - id: ruff-format
