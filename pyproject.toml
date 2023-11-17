@@ -1,0 +1,103 @@
+[build-system]
+requires = ["setuptools>=60", "setuptools-scm>=8.0"]
+
+[project]
+name = "oper8"
+dynamic = ["version"]
+description = "Python-native Kubernetes operator framework for managing trees of components"
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers=[
+    "License :: OSI Approved :: Apache Software License"
+]
+
+dependencies = [
+    "alchemy-config>=1.0.0,<2",
+    "alchemy-logging>=1.0.1,<2",
+    "openshift>=0.13.1,<0.14",
+    "python-dateutil>=2.8.1,<3",
+    "deepdiff>=5.0.2,<6",
+    "jsonpatch>=1.26,<2",
+    "semver>=2.13.0,<3",
+    "kubernetes>=25.3.0,<26",
+    "pygit2>=1.12.0,<2",
+]
+
+[project.scripts]
+
+oper8 = "oper8.__main__:main"
+
+[project.optional-dependencies]
+
+## User Extra Sets ##
+
+ansible = [
+    "ansible-core>=2.9.13,<2.16",
+]
+
+cdk8s = [
+    "cdk8s<1",
+]
+
+test-helpers = [
+    "pytest>=6",
+]
+
+# NOTE: This is "all" from the user perspective, not the dev perspective
+all = [
+    "oper8[ansible, cdk8s, test-helpers]",
+]
+
+## Dev Extra Sets ##
+
+dev-test = [
+    "pytest>=6",
+    "pytest-cov>=2.10.1",
+    "pytest-timeout>=2.1.0,<3",
+    "pylint>=2.6.0,<3",
+    "dill>=0.3.4,<0.4",
+    "snapshottest>=0.6.0,<0.7.0",
+    "Flask>=2.3,<3",
+]
+
+dev-test-ansible = [
+    # This will isntall the k8s extension module needed to actually run
+    "ansible==2.9",
+]
+
+dev-docs = [
+    "sphinx>=4.0.2,<8.0",
+    "sphinx-autoapi>=2.1.0",
+    "sphinx-rtd-theme>=1.2.1,<1.4.0",
+]
+
+dev-fmt = [
+    "pre-commit>=3.0.4,<4.0",
+    "pylint>=2.16.2,<4.0",
+]
+
+dev-build = [
+    "flit==3.9.0",
+]
+
+# NOTE: This is "all" from the user and dev perspective
+all-dev = [
+    "oper8[all, dev-test, dev-test-ansible, dev-docs, dev-fmt, dev-build]"
+]
+
+[project.urls]
+Source = "https://github.com/IBM/oper8"
+
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["caikit", "caikit*"]
+
+[tool.setuptools_scm]
+write_to = "oper8/_version.py"
+
+[tool.pytest.ini_options]
+markers = [
+    "ansible: marks tests that depend on ansible",
+]
