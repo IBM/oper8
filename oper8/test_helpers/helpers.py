@@ -794,7 +794,7 @@ def default_branch_name() -> str:
             .strip()
         )
     except subprocess.CalledProcessError:
-        return "main"
+        return "master"
 
 
 def setup_vcs_project(
