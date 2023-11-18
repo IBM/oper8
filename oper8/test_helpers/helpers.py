@@ -783,15 +783,18 @@ def mock_sys_exit(recorder):
 @lru_cache(maxsize=1)
 def default_branch_name() -> str:
     """Helper to get the current git context's default branch name"""
-    return (
-        subprocess.run(
-            "git config --get init.defaultBranch".split(),
-            check=True,
-            stdout=subprocess.PIPE,
+    try:
+        return (
+            subprocess.run(
+                "git config --get init.defaultBranch".split(),
+                check=True,
+                stdout=subprocess.PIPE,
+            )
+            .stdout.decode("utf-8")
+            .strip()
         )
-        .stdout.decode("utf-8")
-        .strip()
-    )
+    except subprocess.CalledProcessError:
+        return "main"
 
 
 def setup_vcs_project(
