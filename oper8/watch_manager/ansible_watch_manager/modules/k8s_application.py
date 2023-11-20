@@ -7,6 +7,17 @@ import ast
 import logging.handlers
 import pathlib
 
+# COMPATIBILITY
+# With >= 3.12, the vendored ansible six functionality does not import cleanly,
+# so we patch sys.modules to work around this
+import sys
+
+if sys.version_info.major > 3 or sys.version_info.minor > 11:
+    # Third Party
+    from six import moves
+
+    sys.modules["ansible.module_utils.six.moves"] = moves
+
 # Third Party
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.k8s.common import K8sAnsibleMixin
