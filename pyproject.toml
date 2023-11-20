@@ -33,7 +33,8 @@ oper8 = "oper8.__main__:main"
 ## User Extra Sets ##
 
 ansible = [
-    "ansible-core>=2.9.13,<2.16",
+    # This will isntall the k8s extension module needed to actually run
+    "ansible==2.9",
 ]
 
 cdk8s = [
@@ -60,11 +61,6 @@ dev-test = [
     "Flask>=2.3,<3",
 ]
 
-dev-test-ansible = [
-    # This will isntall the k8s extension module needed to actually run
-    "ansible==2.9",
-]
-
 dev-docs = [
     "sphinx>=4.0.2,<8.0",
     "sphinx-autoapi>=2.1.0",
@@ -83,7 +79,7 @@ dev-build = [
 
 # NOTE: This is "all" from the user and dev perspective
 all-dev = [
-    "oper8[all, dev-test, dev-test-ansible, dev-docs, dev-fmt, dev-build]"
+    "oper8[all, dev-test, dev-docs, dev-fmt, dev-build]"
 ]
 
 [project.urls]
