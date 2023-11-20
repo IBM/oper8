@@ -53,7 +53,6 @@ dev-test = [
     "pytest-cov>=2.10.1",
     "pytest-timeout>=2.1.0,<3",
     "dill>=0.3.4,<0.4",
-    "snapshottest>=0.6.0,<0.7.0",
     "Flask>=2.3,<3",
 ]
 

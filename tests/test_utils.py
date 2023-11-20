@@ -175,7 +175,7 @@ def get_generic_openapi_resource_type(provided_map=None):
     return OpenApiResource
 
 
-def test_sanitize_for_serialization_types(snapshot):
+def test_sanitize_for_serialization_types():
     """Make sure that the internal resource name is formatted correctly.
     This one is also pretty basic...
     """
@@ -216,7 +216,24 @@ def test_sanitize_for_serialization_types(snapshot):
             },
         ),
     )
-    snapshot.assert_match(output_dict)
+    assert output_dict[0] == {
+        "kind": "Foo",
+        "metadata": {"name": "test"},
+        "spec": {
+            "date": "2020-01-01T00:00:00",
+            "list": ["listitem"],
+            "openapiType": {
+                "apiVersion": "v1",
+                "kind": "Test",
+                "metadata": {"name": "test"},
+                "spec": {"container": []},
+                "status": {"reconciledVersion": 1},
+            },
+            "resourceNode": {"metadata": {"name": "test"}},
+            "should_be_empty": {},
+            "tuple": ("tupleitem",),
+        },
+    }
 
 
 ## Manifest Version #################################################
