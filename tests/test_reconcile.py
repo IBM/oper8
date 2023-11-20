@@ -11,7 +11,6 @@ import tempfile
 
 # Third Party
 import pytest
-import yaml
 
 # First Party
 import aconfig
@@ -28,7 +27,6 @@ from oper8.patch import STRATEGIC_MERGE_PATCH
 from oper8.reconcile import ReconcileManager, ReconciliationResult, RequeueParams
 from oper8.status import ReadyReason, UpdatingReason
 from oper8.test_helpers.helpers import (
-    DummyCdk8sController,
     DummyController,
     MockDeployManager,
     library_config,

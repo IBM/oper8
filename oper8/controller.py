@@ -88,13 +88,6 @@ class Controller(abc.ABC):
         """
         return cls.finalize_components is not Controller.finalize_components
 
-    @classproperty
-    def enable_cdk8s(cls) -> bool:  # pylint: disable=no-self-argument
-        """If the derived class utilizes cdk8s in its components and or session.
-        Defaults to True"""
-        # TODO?
-        return False
-
     ## Construction ############################################################
 
     def __init__(self, config_defaults: Optional[aconfig.Config] = None):

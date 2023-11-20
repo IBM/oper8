@@ -18,8 +18,8 @@ from oper8.exceptions import PreconditionError, RolloutError, VerificationError
 from oper8.reconcile import RequeueParams
 from oper8.test_helpers.helpers import (
     TEST_NAMESPACE,
-    DummyComponent,
     DummyController,
+    DummyNodeComponent,
     FailOnce,
     MockDeployManager,
     library_config,
@@ -516,7 +516,7 @@ def test_has_finalizer():
     assert not WithoutFinalizer.has_finalizer
 
 
-class FooComponent(DummyComponent):
+class FooComponent(DummyNodeComponent):
     name = "foo"
 
     def __init__(self, session):
@@ -549,7 +549,7 @@ class SubsystemComponent(Component):
         )
 
 
-class BarComponent(DummyComponent):
+class BarComponent(DummyNodeComponent):
     name = "bar"
 
     def __init__(self, session):

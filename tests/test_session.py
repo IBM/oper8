@@ -13,7 +13,7 @@ from oper8.patch import STRATEGIC_MERGE_PATCH
 from oper8.session import MAX_NAME_LEN, Session
 from oper8.status import make_application_status
 from oper8.test_helpers.helpers import (
-    DummyComponent,
+    DummyNodeComponent,
     MockDeployManager,
     make_patch,
     setup_cr,
@@ -23,7 +23,7 @@ from oper8.test_helpers.helpers import (
 
 
 def make_component_class(comp_name):
-    class DerivedComponent(DummyComponent):
+    class DerivedComponent(DummyNodeComponent):
         name = comp_name
 
     return DerivedComponent

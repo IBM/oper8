@@ -143,8 +143,3 @@ def test_resource_node_add_dependency():
     node_a.add_dependency(node_b)
     assert node_a.has_child(node_b)
     assert node_a.get_children() == [(node_b, None)]
-
-
-def test_resource_node_json():
-    node = ResourceNode("a", create_dummy_kube_resource())
-    assert node.to_json() == create_dummy_kube_resource()

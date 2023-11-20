@@ -17,7 +17,7 @@ import alog
 from oper8.dag import CompletionState, Node
 from oper8.exceptions import ClusterError, PreconditionError, VerificationError
 from oper8.rollout_manager import RolloutManager
-from oper8.test_helpers.helpers import DummyComponent, library_config, setup_session
+from oper8.test_helpers.helpers import DummyNodeComponent, library_config, setup_session
 
 ################################################################################
 ## Helpers #####################################################################
@@ -27,8 +27,8 @@ log = alog.use_channel("TEST")
 
 
 def DummyRolloutComponent(name):
-    class _DummyRolloutComponent(DummyComponent):
-        """Wrapper for DummyComponent that keeps track of which keeps track of which
+    class _DummyRolloutComponent(DummyNodeComponent):
+        """Wrapper for DummyNodeComponent that keeps track of which keeps track of which
         phases have completed and in what order
         """
 

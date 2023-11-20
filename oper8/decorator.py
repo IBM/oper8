@@ -38,7 +38,6 @@ def controller(  # pylint: disable=too-many-arguments
     version: str,
     kind: str,
     finalizer: str = None,
-    enable_cdk8s: Optional[bool] = None,
     extra_properties: Optional[Dict[str, any]] = None,
 ) -> Callable[[Type[Controller]], Type[Controller]]:
     """The @controller decorator is the primary entrypoint for creating an
@@ -70,7 +69,7 @@ def controller(  # pylint: disable=too-many-arguments
         kind:  str
             The kind for the resource this controller manages
         extra_properties:  Optional[Dict[str, any]]
-            Etra properties that should be defined as class-properties for this
+            Extra properties that should be defined as class-properties for this
             controller
 
     Returns:
@@ -85,8 +84,6 @@ def controller(  # pylint: disable=too-many-arguments
         cls.kind = kind
         for key, val in (extra_properties or {}).items():
             setattr(cls, key, val)
-        if enable_cdk8s is not None:
-            cls.enable_cdk8s = enable_cdk8s
         if finalizer is not None:
             cls.finalizer = finalizer
         return cls

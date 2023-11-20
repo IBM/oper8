@@ -187,7 +187,7 @@ log = alog.use_channel("K8S-APP")
 
 class KubernetesAnsibleApplicationModule(AnsibleModule, K8sAnsibleMixin):
     """This ansible module implements management of a full application via
-    the oper8 and cdk8s modules.
+    the oper8 modules.
     """
 
     @property

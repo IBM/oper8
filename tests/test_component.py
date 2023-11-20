@@ -22,7 +22,7 @@ from oper8.deploy_manager.owner_references import _make_owner_reference
 from oper8.patch import STRATEGIC_MERGE_PATCH
 from oper8.test_helpers.helpers import (
     TEST_NAMESPACE,
-    DummyComponent,
+    DummyNodeComponent,
     MockDeployManager,
     configure_logging,
     library_config,
@@ -42,7 +42,7 @@ def get_comp_type(name="dummy"):
     """
     given_name = name
 
-    class Wrapped(DummyComponent):
+    class Wrapped(DummyNodeComponent):
         name = given_name
 
         def __init__(self, *args, **kwargs):
@@ -276,7 +276,7 @@ def test_cross_namespace_patch_annotation():
 
 def test_dependency_order():
     """Make sure that objects are rendered in the correct order based on the
-    declared dependencies in cdk8s.
+    declared dependencies in the component.
     """
     session = setup_session()
     comp = get_comp_type()(

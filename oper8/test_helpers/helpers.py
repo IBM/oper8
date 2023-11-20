@@ -172,43 +172,6 @@ def get_failable_method(fail_flag, method, failure_return=False):
     return failable_method
 
 
-def create_api_obj_from_spec(chart, session, api_obj):
-    """Create a cdk8s.ApiObject based on an api_obj spec.
-
-    Args:
-        chart:  cdk8s.Chart
-            The parent chart that this object should belong to
-        session:  Session
-            The Session passed to the build_chart function
-        api_obj:  tuple(name, args) OR callable
-            Either a tuple consisting of the name of the object and keyword args
-            to cdk8s.ApiObject, or a callable function which takes `chart` and
-            `session` and performs the creation itself.
-    """
-    if isinstance(api_obj, tuple):
-        obj_name, api_obj_args = api_obj
-        kwargs = merge_configs(
-            {
-                "api_version": "v1",
-                "metadata": {"name": obj_name, "namespace": TEST_NAMESPACE},
-            },
-            api_obj_args,
-        )
-        log.debug3("ApiObject kwargs: %s", kwargs)
-
-        # Third Party
-        # NOTE: Local import to keep optional
-        import cdk8s
-
-        return cdk8s.ApiObject(
-            chart,
-            obj_name,
-            **kwargs,
-        )
-    log.debug("Calling api_obj: %s", api_obj)
-    return api_obj(chart, session)
-
-
 class FailOnce:
     """Helper callable that will fail once on the N'th call"""
 
@@ -441,11 +404,6 @@ class DummyComponentBase(Component):
                 object_def = api_obj(self, session)
                 object_name = api_obj.name
 
-            # Replace api_version with apiVersion for backwards compatibility with
-            # cdk8s
-            if "api_version" in object_def:
-                object_def["apiVersion"] = object_def["api_version"]
-
             resource_node = self.add_resource(object_name, object_def)
             if resource_node is not None:
                 api_objs[resource_node.get_name()] = resource_node
@@ -498,71 +456,8 @@ class DummyNodeComponent(DummyComponentBase):
         self._add_resources(self, session)
 
 
-class DummyCdk8sComponent(DummyComponentBase):
-    """
-    Configurable dummy component which will create an abritrary set of
-    cdk8s.ApiObject instances.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        """Construct with the additional option to fail build_chart"""
-        super().__init__(*args, session=session, **kwargs)
-        self._add_resources(self, session)
-
-    def _gather_dummy_resources(self, scope, session):
-        # Third Party
-        # NOTE: Import here as this brings in jsii
-        from constructs import Node
-
-        api_objs = {}
-        for api_obj in self.api_objects:
-            log.debug3("Creating api object: %s", api_obj)
-            chart = create_api_obj_from_spec(scope, session, api_obj)
-            if chart is not None:
-                api_objs[Node.of(chart).id] = chart
-        return api_objs
-
-
-class DummyLegacyComponent(DummyCdk8sComponent):
-    """
-    This version uses the legacy build_chart workflow.
-
-    Configurable dummy component which will create an arbitrary set of
-    cdk8s.ApiObject instances.
-    """
-
-    def __init__(self, name="dummy", *args, **kwargs):
-        # Call the DummyComponentBases super
-        super(DummyCdk8sComponent, self).__init__(*args, name=name, **kwargs)
-
-    @alog.logged_function(log.debug)
-    def build_chart(self, session):
-        """Implement the actual resource additions in build_chart"""
-
-        # Third Party
-        # NOTE: Local import to keep optional
-        import cdk8s
-
-        class DummyChart(cdk8s.Chart):
-            def __init__(_self, scope, ns, *args, **kwargs):
-                super().__init__(scope, ns, *args, **kwargs)
-                self._add_resources(_self, session)
-
-        return DummyChart
-
-
-class DummyComponent(DummyNodeComponent):
-    """
-    Default to node component. If users want to use cdk8s
-    they can manually import the DummyCdk8sComponent
-    """
-
-
-class MockComponent(DummyComponent):
-    """
-    Configurable dummy component which will create an arbitrary set of
-    cdk8s.ApiObject instances.
-    """
+class MockComponent(DummyNodeComponent):
+    """Dummy component with a valid mock name"""
 
     name = "mock"
 
@@ -591,7 +486,7 @@ class DummyController(Controller):
         setup_components_fail=False,
         finalize_components_fail=False,
         should_requeue_fail=False,
-        component_type=DummyComponent,
+        component_type=DummyNodeComponent,
         **kwargs,
     ):
         # Initialize parent
@@ -687,15 +582,6 @@ class DummyController(Controller):
 
         WrappedDummyComponent.name = name
         return WrappedDummyComponent(session=session, *args, **kwargs)
-
-
-class DummyCdk8sController(DummyController):
-    """Same as DummyController but default to enabling cdk8s"""
-
-    enable_cdk8s = True
-
-    def __init__(self, component_type=DummyCdk8sComponent, *args, **kwargs):
-        super().__init__(*args, component_type=component_type, **kwargs)
 
 
 @controller(

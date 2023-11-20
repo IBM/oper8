@@ -4,11 +4,6 @@ This module contains a collection of classes for implementing nodes of a Graph
 # Standard
 from typing import Any, List, Optional
 
-# First Party
-import alog
-
-log = alog.use_channel("DAGNODE")
-
 
 class Node:
     """Class for representing a node in the Graph"""
@@ -66,9 +61,7 @@ class Node:
 
     ## Graph Functions ##############################################################
     def topology(self) -> List["Node"]:
-        """Function to get an ordered topology of a nodes children. this was taken from cdk8s's
-        dag implementation: https://github.com/cdk8s-team/cdk8s-core/blob/e33c3d5bbba1c61f9c7e06b8bc97df3195038b2c/src/dependency.ts#L134 # pylint: disable=line-too-long
-        """
+        """Function to get an ordered topology of a node's children"""
         found = set()
         topology = []
 
@@ -127,33 +120,32 @@ class ResourceNode(Node):
         # Override init to require name/manifest parameters
         super().__init__(name, manifest)
 
-    ## ApiObject Parameters and Functions ##################################
-    # These functions are required to keep backwards compatibility with
-    # cdk8s ApiObject
+    ## ApiObject Parameters and Functions ######################################
     @property
-    def api_group(self) -> str:  # pylint: disable=missing-function-docstring
+    def api_group(self) -> str:
+        """The kubernetes apiVersion group name without the schema version"""
         return self.api_version.split("/")[0]
 
     @property
-    def api_version(self) -> str:  # pylint: disable=missing-function-docstring
+    def api_version(self) -> str:
+        """The full kubernetes apiVersion"""
         return self.get_data().get("apiVersion")
 
     @property
-    def kind(self) -> str:  # pylint: disable=missing-function-docstring
+    def kind(self) -> str:
+        """The resource kind"""
         return self.get_data().get("kind")
 
     @property
-    def metadata(self) -> dict:  # pylint: disable=missing-function-docstring
+    def metadata(self) -> dict:
+        """The full resource metadata dict"""
         return self.get_data().get("metadata", {})
 
     @property
-    def name(self) -> str:  # pylint: disable=missing-function-docstring
+    def name(self) -> str:
+        """The resource metadata.name"""
         return self.metadata.get("name")
 
-    def add_dependency(
-        self, node: "ResourceNode"
-    ):  # pylint: disable=missing-function-docstring
+    def add_dependency(self, node: "ResourceNode"):
+        """Add a child dependency to this node"""
         self.add_child(node)
-
-    def to_json(self):  # pylint: disable=missing-function-docstring
-        return self.get_data()

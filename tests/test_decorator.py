@@ -98,24 +98,6 @@ def test_controller_extra_properties():
     assert BarController.foo == "bar"
 
 
-def test_controller_enable_cdk8s():
-    """Make sure that the extra_properties argument to @controller properly
-    attaches the given properties to the Controller class
-    """
-
-    @controller(
-        group="foo.bar",
-        version="v2",
-        kind="Bar",
-        enable_cdk8s=True,
-    )
-    class BarController(Controller):
-        def setup_components(self, *_, **__):
-            setup_components_mock()
-
-    assert BarController.enable_cdk8s
-
-
 def test_controller_finalizer():
     """Make sure that the extra_properties argument to @controller properly
     attaches the given properties to the Controller class

@@ -317,10 +317,7 @@ def test_to_dict_all_required_fields():
 
 
 def test_to_dict_snake_case_keys():
-    """Make sure that the keys returned by to_dict maintain their snake casing.
-    This is essential because they're passed as args to the cdk8s struct which
-    takes snake_case arguments.
-    """
+    """Make sure that the keys returned by to_dict maintain their snake casing."""
     session = setup_session()
     conn_dict = CosConnection(
         session,

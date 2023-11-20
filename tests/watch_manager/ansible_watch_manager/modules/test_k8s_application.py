@@ -20,7 +20,6 @@ import alog
 from oper8 import Controller, constants
 from oper8.log_format import Oper8JsonFormatter
 from oper8.test_helpers.helpers import (
-    DummyCdk8sController,
     DummyController,
     ModuleExit,
     TestRecorder,
@@ -177,39 +176,6 @@ class TestControllerWithResources(DummyController):
 
     def setup_components(self, session):
         log.debug("TestControllerWithResources.setup_components")
-        super().setup_components(session)
-
-
-class TestControllerWithCdk8sResources(DummyCdk8sController):
-    """Dummy controller that deploys some api resources"""
-
-    # This is not a test class!
-    __test__ = False
-
-    def log_constructed(self, config_defaults):
-        pass
-
-    def setup_components(self, session):
-        pass
-
-    def finalize_components(self, session):
-        pass
-
-    def __init__(self, **kwargs):
-        super().__init__(
-            components=[
-                {
-                    "name": "foo-comp",
-                    "api_objects": [
-                        ("foo", {"kind": "Foo", "metadata": {"namespace": "bar"}})
-                    ],
-                }
-            ],
-            **kwargs,
-        )
-
-    def setup_components(self, session):
-        log.debug("TestControllerWithCdk8sResources.setup_components")
         super().setup_components(session)
 
 
@@ -468,18 +434,3 @@ def test_owner_references():
     assert resource
     log.debug(resource)
     assert len(resource["metadata"]["ownerReferences"]) == 1
-
-
-@pytest.mark.ansible
-def test_cdk8s_controller():
-    """Test that running the module with cdk8s enables works"""
-    recorder = run_module(
-        cluster_state={"bar": {"Foo": {"v1": {}}}},
-        module_params={
-            "controller_class": "test_k8s_application.TestControllerWithCdk8sResources"
-        },
-        # We don't patch the controller class here because we want resources
-        # To be deployed
-        patch_controller_class=False,
-    )
-    assert recorder.retcode == 0

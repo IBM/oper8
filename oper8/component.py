@@ -54,8 +54,7 @@ class Component(Node, abc.ABC):
                 Whether or not this component is disabled
         """
         # Ensure that the name property is defined by accessing it and that
-        # namespace is inherited from session. Use session_namespace instead
-        # of namespace for cdk8s backwards compatibility
+        # namespace is inherited from session.
         self.name  # pylint: disable=pointless-statement
         self.session_namespace = session.namespace
         self.disabled = disabled
@@ -249,9 +248,8 @@ class Component(Node, abc.ABC):
         # Sanitize object to enable native support for openapi objects
         obj = sanitize_for_serialization(obj)
 
-        # Add namespace to obj if not present. This was automatically done by cdk8s
-        if not obj.get("metadata", {}).get("namespace"):
-            obj["metadata"]["namespace"] = self.session_namespace
+        # Add namespace to obj if not present
+        obj.setdefault("metadata", {}).setdefault("namespace", self.session_namespace)
 
         node = ResourceNode(name, obj)
         self.graph.add_node(node)
@@ -506,8 +504,7 @@ class Component(Node, abc.ABC):
 
     def __gather_resources(self, session) -> List[Tuple[str, dict]]:
         """This is a helper for __render which handles converting resource objects
-        into a list of dictionaries. This is overridden by the cdk8s compatibility
-        layer to utilize ApiObjects instead of ResourceNodes
+        into a list of dictionaries.
         """
         # Perform lazy chart creation before finishing rendering
         self.__build_lazy_charts(session)
