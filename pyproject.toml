@@ -37,17 +37,13 @@ ansible = [
     "ansible==2.9",
 ]
 
-cdk8s = [
-    "cdk8s<1",
-]
-
 test-helpers = [
     "pytest>=6",
 ]
 
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
-    "oper8[ansible, cdk8s, test-helpers]",
+    "oper8[ansible, test-helpers]",
 ]
 
 ## Dev Extra Sets ##
