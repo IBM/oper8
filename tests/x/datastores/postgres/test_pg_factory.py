@@ -4,7 +4,7 @@ Tests of the postgres factory
 
 
 # Local
-from oper8.test_helpers.oper8x_helpers import setup_session_ctx
+from oper8.test_helpers.helpers import setup_session_ctx
 from oper8.x.datastores.postgres.factory import PostgresFactory
 from tests.x.datastores.postgres.util import (
     POSTGRES_PROVIDED_CONNECTION_DEPLOY_CONFIG_OVERRIDES,

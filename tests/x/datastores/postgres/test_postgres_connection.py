@@ -10,11 +10,8 @@ import pytest
 
 # Local
 from oper8.exceptions import ConfigError, PreconditionError
-from oper8.test_helpers.oper8x_helpers import (
-    MockDeployManager,
-    set_secret_data,
-    setup_session,
-)
+from oper8.test_helpers.helpers import MockDeployManager, setup_session
+from oper8.test_helpers.oper8x_helpers import set_secret_data
 from oper8.x.datastores.postgres import PostgresConnection, PostgresFactory
 from oper8.x.utils import common, constants
 

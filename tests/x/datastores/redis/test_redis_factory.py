@@ -5,7 +5,7 @@ Tests of the redis factory
 import pytest
 
 # Local
-from oper8.test_helpers.oper8x_helpers import setup_session
+from oper8.test_helpers.helpers import setup_session
 from oper8.x.datastores.redis.factory import RedisFactory
 
 ## Helpers #####################################################################

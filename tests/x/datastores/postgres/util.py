@@ -6,8 +6,8 @@ Sharted utils for testing postgres
 import aconfig
 
 # Local
-from oper8.test_helpers.oper8x_helpers import TEST_INSTANCE_NAME, set_secret_data
-from oper8.utils import merge_configs
+from oper8.test_helpers.helpers import TEST_INSTANCE_NAME
+from oper8.test_helpers.oper8x_helpers import set_secret_data
 from oper8.x.datastores.postgres.factory import PostgresFactory
 from oper8.x.utils import common, constants
 

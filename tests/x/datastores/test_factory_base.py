@@ -11,7 +11,7 @@ import alog
 
 # Local
 from oper8 import component
-from oper8.test_helpers.oper8x_helpers import setup_session
+from oper8.test_helpers.helpers import setup_session
 from oper8.x.datastores.connection_base import DatastoreConnectionBase
 from oper8.x.datastores.factory_base import DatastoreSingletonFactoryBase
 from oper8.x.datastores.interfaces import Datastore
