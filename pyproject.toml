@@ -33,7 +33,7 @@ oper8 = "oper8.__main__:main"
 ## User Extra Sets ##
 
 ansible = [
-    "ansible-core>=2.9.13,<2.16",
+    "ansible-core>=2.9.13,<2.17",
 ]
 
 cdk8s = [
