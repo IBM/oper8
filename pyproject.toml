@@ -20,7 +20,7 @@ dependencies = [
     "deepdiff>=5.0.2,<6",
     "jsonpatch>=1.26,<2",
     "semver>=2.13.0,<3",
-    "kubernetes>=25.3.0,<26",
+    "kubernetes>=25.3.0,<29",
     "pygit2>=1.12.0,<2",
 ]
 
