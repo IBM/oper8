@@ -128,11 +128,11 @@ class VCS:
         """
         try:
             return self.repo.resolve_refish(refish)
-        except KeyError:
+        except KeyError as err:
             log.error("Unable to find version %s in repo", refish)
             raise VCSConfigError(  # pylint: disable=raise-missing-from
                 f"Version: '{refish}' not found in repo"
-            )
+            ) from err
 
     def list_refs(self) -> Set[str]:
         """List all of the tags and references in the repo
@@ -310,17 +310,13 @@ class VCS:
         try:
             log.debug("Creating branch for %s", branch_name)
             return self.repo.branches.create(branch_name, commit)
-        except AlreadyExistsError:
+        except AlreadyExistsError as err:
             # Branch must have been created by different processes
             log.warning("Branch %s already exists", branch_name)
-            raise VCSMultiProcessError(  # pylint: disable=raise-missing-from
-                f"Branch {branch_name} already exists"
-            )
+            raise VCSMultiProcessError(f"Branch {branch_name} already exists") from err
 
-        except OSError:
-            raise VCSRuntimeError(  # pylint: disable=raise-missing-from
-                "Unable to create branch"
-            )
+        except OSError as err:
+            raise VCSRuntimeError("Unable to create branch") from err
 
     def delete_branch(self, branch_name: str):
         """Delete a branch from the repo
@@ -398,12 +394,12 @@ class VCS:
         log.debug("Creating new worktree for %s", worktree_name)
         try:
             self.repo.add_worktree(worktree_name, dest_path, branch)
-        except AlreadyExistsError:
+        except AlreadyExistsError as err:
             # Worktree must have been created by different processes
             log.warning("Worktree %s already exists", worktree_name)
-            raise VCSMultiProcessError(  # pylint: disable=raise-missing-from
+            raise VCSMultiProcessError(
                 f"Worktree {worktree_name} already exists"
-            )
+            ) from err
         except GitError as err:
             # If reference is already checked out it must have been done by a different process
             if str(err) == "reference is already checked out":
@@ -412,9 +408,9 @@ class VCS:
                     worktree_name,
                     exc_info=True,
                 )
-                raise VCSMultiProcessError(  # pylint: disable=raise-missing-from
+                raise VCSMultiProcessError(
                     f"Branch {worktree_name} already checked out by other process"
-                )
+                ) from err
 
             log.error(
                 "Unexpected Git Error when adding worktree: %s", err, exc_info=True

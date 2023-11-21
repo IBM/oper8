@@ -36,7 +36,6 @@ from .deploy_manager import (
 from .exceptions import (
     ClusterError,
     ConfigError,
-    Oper8Error,
     Oper8ExpectedError,
     Oper8FatalError,
     PreconditionError,
@@ -79,14 +78,16 @@ class ReconciliationResult:
     exception: Exception = None
 
 
+# Forward declarations of Controller
+CONTROLLER_CLASS_TYPE = Type["Controller"]  # noqa: F821
+CONTROLLER_INSTANCE_TYPE = "Controller"
+
 # Type helper for describing a controller. CONTROLLER_INFO
 # can be a str in the form "module.class", a Controller class that
 # will be initialized, or an already initialized Controller. While the
 # first two methods are preferred, an already created Controller can
 # be useful for tests and backwards compatibility
-CONTROLLER_INFO = Union[
-    str, Type["Controller"], "Controller"
-]  # pylint: disable=invalid-name
+CONTROLLER_INFO = Union[str, CONTROLLER_CLASS_TYPE, CONTROLLER_INSTANCE_TYPE]
 
 ## ReconcileManager #################################################################
 
@@ -365,9 +366,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         handler_generator = None
         if logging.root.handlers:
             old_handler = logging.root.handlers[0]
-            handler_generator = (
-                lambda: old_handler  # pylint: disable=unnecessary-lambda-assignment
-            )
+
+            def handler_generator():
+                return old_handler
 
         alog.configure(
             default_level=default_level,
@@ -431,7 +432,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         os.chdir(working_dir)
         sys.path.insert(0, str(working_dir))
 
-    def setup_controller(self, controller_info: CONTROLLER_INFO) -> Type["Controller"]:
+    def setup_controller(
+        self, controller_info: CONTROLLER_INFO
+    ) -> CONTROLLER_CLASS_TYPE:
         """
         Import the requested Controller class and enable any compatibility layers
 
@@ -481,7 +484,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
 
     def setup_session(
         self,
-        controller: "Controller",
+        controller: CONTROLLER_INSTANCE_TYPE,
         cr_manifest: aconfig.Config,
         deploy_manager: DeployManagerBase,
         reconciliation_id: str,
@@ -531,7 +534,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         )
 
     def run_controller(
-        self, controller: "Controller", session: Session, is_finalizer: bool
+        self, controller: CONTROLLER_INSTANCE_TYPE, session: Session, is_finalizer: bool
     ) -> ReconciliationResult:
         """Run the Controller's reconciliation or finalizer with the constructed Session.
         This function also updates the CR status and handles requeue logic.
@@ -690,7 +693,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
 
     def _import_controller(
         self, controller_info: CONTROLLER_INFO
-    ) -> Type["Controller"]:
+    ) -> CONTROLLER_CLASS_TYPE:
         """Parse the controller info and reimport the controller
 
         Args:
@@ -772,12 +775,12 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         return controller_class
 
     def _configure_controller(
-        self, controller_class: Type["Controller"]
-    ) -> "Controller":
+        self, controller_class: CONTROLLER_CLASS_TYPE
+    ) -> CONTROLLER_INSTANCE_TYPE:
         """Construct the Controller Class
 
         Args:
-            controller_class: Type["Controller"]
+            controller_class: CONTROLLER_CLASS_TYPE
                 The Controller class to be reconciled
 
         Returns:
@@ -1067,61 +1070,46 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         cr_manifest = self.parse_manifest(resource)
         deploy_manager = self.setup_deploy_manager(resource)
 
-        # Oper8 errors
-        if isinstance(error, Oper8Error):
-            component_state = getattr(error, "completion_state", None)
+        # Get the completion state if possible
+        component_state = getattr(error, "completion_state", None)
 
-            # Expected Oper8 Errors
-            if isinstance(error, PreconditionError):
-                status_update = {
-                    "updating_reason": status.UpdatingReason.PRECONDITION_WAIT,
-                    "updating_message": str(error),
-                    "component_state": component_state,
-                }
-            elif isinstance(error, VerificationError):
-                status_update = {
-                    "updating_reason": status.UpdatingReason.VERIFY_WAIT,
-                    "updating_message": str(error),
-                    "component_state": component_state,
-                }
-            elif isinstance(error, Oper8ExpectedError):
-                status_update = {
-                    "updating_reason": status.UpdatingReason.VERIFY_WAIT,
-                    "updating_message": str(error),
-                    "component_state": component_state,
-                }
+        # Expected Oper8 Errors
+        if isinstance(error, PreconditionError):
+            status_update = {
+                "updating_reason": status.UpdatingReason.PRECONDITION_WAIT,
+                "updating_message": str(error),
+                "component_state": component_state,
+            }
+        elif isinstance(error, (VerificationError, Oper8ExpectedError)):
+            status_update = {
+                "updating_reason": status.UpdatingReason.VERIFY_WAIT,
+                "updating_message": str(error),
+                "component_state": component_state,
+            }
+        elif isinstance(error, ConfigError):
+            status_update = {
+                "ready_reason": status.ReadyReason.CONFIG_ERROR,
+                "ready_message": str(error),
+                "updating_reason": status.UpdatingReason.ERRORED,
+                "updating_message": str(error),
+                "component_state": component_state,
+            }
+        elif isinstance(error, ClusterError):
+            status_update = {
+                "updating_reason": status.UpdatingReason.CLUSTER_ERROR,
+                "updating_message": str(error),
+                "component_state": component_state,
+            }
 
-            elif isinstance(error, ConfigError):
-                status_update = {
-                    "ready_reason": status.ReadyReason.CONFIG_ERROR,
-                    "ready_message": str(error),
-                    "updating_reason": status.UpdatingReason.ERRORED,
-                    "updating_message": str(error),
-                    "component_state": component_state,
-                }
-            elif isinstance(error, ClusterError):
-                status_update = {
-                    "updating_reason": status.UpdatingReason.CLUSTER_ERROR,
-                    "updating_message": str(error),
-                    "component_state": component_state,
-                }
+        elif isinstance(error, (RolloutError, Oper8FatalError)):
+            status_update = {
+                "ready_reason": status.ReadyReason.ERRORED,
+                "ready_message": str(error),
+                "updating_reason": status.UpdatingReason.ERRORED,
+                "updating_message": str(error),
+                "component_state": component_state,
+            }
 
-            elif isinstance(error, RolloutError):
-                status_update = {
-                    "ready_reason": status.ReadyReason.ERRORED,
-                    "ready_message": str(error),
-                    "updating_reason": status.UpdatingReason.ERRORED,
-                    "updating_message": str(error),
-                    "component_state": component_state,
-                }
-            elif isinstance(error, Oper8FatalError):
-                status_update = {
-                    "ready_reason": status.ReadyReason.ERRORED,
-                    "ready_message": str(error),
-                    "updating_reason": status.UpdatingReason.ERRORED,
-                    "updating_message": str(error),
-                    "component_state": component_state,
-                }
         # Catchall for non oper8 errors
         else:
             status_update = {

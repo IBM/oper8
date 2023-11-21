@@ -62,16 +62,16 @@ class Controller(abc.ABC):
     # NOTE: pylint is very confused by the use of these property decorators, so
     #   we need to liberally ignore warnings.
 
-    @abstractclassproperty
-    def group(cls) -> str:  # pylint: disable=no-self-argument
+    @abstractclassproperty  # noqa: B027
+    def group(cls) -> str:
         """The apiVersion group for the resource this controller manages"""
 
-    @abstractclassproperty
-    def version(cls) -> str:  # pylint: disable=no-self-argument
+    @abstractclassproperty  # noqa: B027
+    def version(cls) -> str:
         """The apiVersion version for the resource this controller manages"""
 
-    @abstractclassproperty
-    def kind(cls) -> str:  # pylint: disable=no-self-argument
+    @abstractclassproperty  # noqa: B027
+    def kind(cls) -> str:
         """The kind for the resource this controller manages"""
 
     @classproperty
@@ -137,10 +137,7 @@ class Controller(abc.ABC):
     #   clear to deriving classes.
     ##
 
-    def finalize_components(
-        self,
-        session: Session,  # pylint: disable=unused-argument
-    ):
+    def finalize_components(self, session: Session):  # noqa: B027
         """When performing a finalizer operation, this function will be called
         to perform custom finalizer logic for this Controller.
 
@@ -155,10 +152,7 @@ class Controller(abc.ABC):
                 The current session containing the per-event configs
         """
 
-    def after_deploy(
-        self,
-        session: Session,  # pylint: disable=unused-argument
-    ) -> bool:
+    def after_deploy(self, session: Session) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished deploying all components, but not necessarily
         verifying all of them. The default behavior is a no-op.

@@ -109,7 +109,7 @@ def _make_owner_reference(owner_cr: dict) -> dict:
     #   oper8-managed resources reference the resource, only one can have
     #   controller set to True. According to StackOverflow, this field is
     #   only used for adoption and not garbage collection.
-    # CITE: https://stackoverflow.com/questions/51068026/when-exactly-do-i-set-an-ownerreferences-controller-field-to-true/65825463#65825463  pylint: disable=line-too-long
+    # CITE: https://stackoverflow.com/a/65825463
     metadata = owner_cr.get("metadata", {})
     return {
         "apiVersion": owner_cr.get("apiVersion"),

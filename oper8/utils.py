@@ -23,6 +23,10 @@ from .exceptions import assert_cluster
 log = alog.use_channel("OPUTL")
 
 
+# Forward declaration for Session
+SESSION_TYPE = "Session"
+
+
 ## Dicts #######################################################################
 
 
@@ -198,7 +202,7 @@ def get_manifest_version(cr_manifest: aconfig.Config) -> str:
     return nested_get(cr_manifest, config.vcs.field)
 
 
-def add_finalizer(session: "Session", finalizer: str):
+def add_finalizer(session: SESSION_TYPE, finalizer: str):
     """This helper adds a finalizer to current session CR
 
     Args:
@@ -221,7 +225,7 @@ def add_finalizer(session: "Session", finalizer: str):
     session.finalizers.append(finalizer)
 
 
-def remove_finalizer(session: "Session", finalizer: str):
+def remove_finalizer(session: SESSION_TYPE, finalizer: str):
     """This helper gets removes a finalizer from the current session controller
 
     Args:

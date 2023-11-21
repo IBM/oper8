@@ -55,7 +55,7 @@ class Component(Node, abc.ABC):
         """
         # Ensure that the name property is defined by accessing it and that
         # namespace is inherited from session.
-        self.name  # pylint: disable=pointless-statement
+        self.name  # noqa: B018
         self.session_namespace = session.namespace
         self.disabled = disabled
 
@@ -66,7 +66,7 @@ class Component(Node, abc.ABC):
         # NOTE: This is done before the parent initialization so duplicates can
         #   be caught by the session with a nice error rather than Graph
         log.debug2("[%s] Auto-registering %s", session.id, self)
-        session.add_component(self, disabled=disabled)
+        session.add_component(self)
 
         # Initialize the Graph that'll control component rendering
         self.graph = Graph()
