@@ -1,0 +1,11 @@
+---
+- hosts: localhost
+  gather_facts: false
+  collections:
+    - kubernetes.core
+    - operator_sdk.util
+
+  tasks:
+    - include_role:
+        name: oper8_app
+      vars: {}

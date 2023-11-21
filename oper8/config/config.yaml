@@ -1,0 +1,131 @@
+# Baseline logging config
+log_level: info
+log_filters: ""
+log_json: false
+log_thread_id: true
+
+## Operator scoped configuration ##
+
+# Run the rendering, but do not apply to the cluster, optionally giving a
+# working directory where mainfests should be written
+dry_run: false
+working_dir: null
+# If dumping to working_dir, this allows the rendered disabled components to be
+# dumped as well
+dump_disabled: false
+
+# Whether a reconciliation should recurse when it generates a manifest for a CR
+# kind managed by a controller in the same operator
+standalone: false
+
+# Whether or not to strictly enforce that the version in a CR matches one of the
+# versions specified in the available versions list
+strict_versioning: false
+supported_versions: []
+
+# Whether to automatically apply oper8 and kubebuilder compatible status updates to
+# custom resources
+manage_status: true
+
+# Whether or not to apply the internal name annotation to output resources
+internal_name_annotation: true
+
+# Specify a single controller to watch, else an empty string leads to watches for all controllers
+controller_name: ""
+
+# Number of times to retry deploying
+deploy_retries: 3
+
+# Retry backoff value in seconds
+retry_backoff_base_seconds: 0.01
+
+# Wait duration in seconds until current reconciliation request is re-queued to controller runtime
+requeue_after_seconds: 60
+
+# Numbers of threads to use for the rollout manager (null for all available)
+rollout_manager:
+  deploy_threads: null
+  verify_threads: null
+
+# Comma separated list of namespaces to watch.
+watch_namespace: ""
+
+# Set watch manager, either python or ansible
+watch_manager: ansible
+
+python_watch_manager:
+  max_concurrent_reconciles: null
+  reconcile_period: 10m
+
+  process_context: fork
+  watch_dependent_resources: false
+  subsystem_rollout: false
+
+  # watch filter used to reduce the amount of reconciles. The following
+  # filters are available by default, or you can supply a custom filter via
+  # the module.Filter notation.
+  # - default: Reconcile on resource spec changes
+  # - annotation: Reconcile on spec changes plus any annotation
+  # - user-annotation: Reconcile on spec changes and just user annotations
+  # ignoring kubernetes.io, k8s.io, and openshift.io
+  filter: default
+
+  lock:
+    # Set different lock types:
+    # - leader-for-life: creates single lock using configmap with pod ownerRef
+    # - leader-with-lease: creates reoccurring lock using lease coordination.k8s.io/v1
+    # - annotation: apply lock as CR annotation to support multiple operator's working
+    # on the same CR
+    # - null/dryrun: disabled
+    type: dryrun
+
+    ## Implementation specific configs
+    # Lock name
+    name: null
+    # Lock namespace
+    namespace: default
+    # Duration for locks that support it
+    duration: 15s
+    # Poll time for threaded lock managers
+    poll_time: 10s
+
+# Special configuration when using the AnsibleWatchManager
+ansible_watch_manager:
+  log_file_dir: null
+  kill_max_wait: 5
+
+  # Overwrite these to update the defaults when initializing
+  ansible_base_path: null
+  ansible_entrypoint: null
+  ansible_args: null
+  manage_status: null
+  watch_dependent_resources: null
+  reconcile_period: null
+  playbook_parameters: null
+
+# The operator and pod names used for lock management. These should only be used
+# for the ansible watch manager
+operator_name: ""
+pod_name: ""
+
+# Version Control System Config
+vcs:
+  enabled: false
+
+  # Source and destination directories
+  repo: null
+  dest: null
+
+  # Module directory in repository
+  module_dir: src
+
+  # CR Field and manual version override
+  field: spec.version
+  version_override: null
+
+  # Weather to checkout the directory via worktree
+  # or clone
+  checkout_method: worktree
+
+# When not null, this value is the operator version in the CR status
+operator_version: null

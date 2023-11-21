@@ -9,7 +9,9 @@ if [ "$allow_warnings" = "1" ]
 then
     warn_arg=""
 else
-    warn_arg="-W error"
+    # NOTE: The AnsibleWatchManager raises an ImportWarning when ansible imports
+    #   systemd under the hood
+    warn_arg="-W error -W ignore::ImportWarning"
 fi
 
 PYTHONPATH="${BASE_DIR}:$PYTHONPATH" python3 -m pytest \

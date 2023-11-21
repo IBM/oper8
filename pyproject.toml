@@ -33,11 +33,8 @@ oper8 = "oper8.__main__:main"
 ## User Extra Sets ##
 
 ansible = [
-    "ansible-core>=2.9.13,<2.16",
-]
-
-cdk8s = [
-    "cdk8s<1",
+    # This will isntall the k8s extension module needed to actually run
+    "ansible==2.9",
 ]
 
 test-helpers = [
@@ -46,7 +43,7 @@ test-helpers = [
 
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
-    "oper8[ansible, cdk8s, test-helpers]",
+    "oper8[ansible, test-helpers]",
 ]
 
 ## Dev Extra Sets ##
@@ -56,13 +53,7 @@ dev-test = [
     "pytest-cov>=2.10.1",
     "pytest-timeout>=2.1.0,<3",
     "dill>=0.3.4,<0.4",
-    "snapshottest>=0.6.0,<0.7.0",
     "Flask>=2.3,<3",
-]
-
-dev-test-ansible = [
-    # This will isntall the k8s extension module needed to actually run
-    "ansible==2.9",
 ]
 
 dev-docs = [
@@ -83,7 +74,7 @@ dev-build = [
 
 # NOTE: This is "all" from the user and dev perspective
 all-dev = [
-    "oper8[all, dev-test, dev-test-ansible, dev-docs, dev-fmt, dev-build]"
+    "oper8[all, dev-test, dev-docs, dev-fmt, dev-build]"
 ]
 
 [project.urls]

@@ -11,12 +11,12 @@ repos:
     rev: 5.11.5
     hooks:
       - id: isort
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    # NOTE: This must be kept in sync with pyproject.toml!
-    rev: v0.1.5
-    hooks:
-      # Run the linter.
-      - id: ruff
-      # Run the formatter.
-      - id: ruff-format
+  # - repo: https://github.com/astral-sh/ruff-pre-commit
+  #   # Ruff version.
+  #   # NOTE: This must be kept in sync with pyproject.toml!
+  #   rev: v0.1.5
+  #   hooks:
+  #     # Run the linter.
+  #     - id: ruff
+  #     # Run the formatter.
+  #     - id: ruff-format
