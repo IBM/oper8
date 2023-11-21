@@ -1,13 +1,11 @@
 """
 This module holds helpers that rely on oper8.x
 """
-
-
 # Standard
-import json
+import os
 
 # Local
-from .helpers import *
+from .helpers import TEST_DATA_DIR
 from oper8.session import Session
 from oper8.x.utils import common
 from oper8.x.utils.tls_context.internal import InternalCaComponent
@@ -54,29 +52,6 @@ def set_secret_data(
         name,
         {"type": secret_type, "data": data, "stringData": string_data},
         scoped_name=scoped_name,
-    )
-
-
-def set_image_pull_secret(
-    session,
-    secret_name=PULL_SECRET_NAME,
-    registries=None,
-):
-    registries = registries or ["stg.icr.io", "cp.icr.io", "us.icr.io"]
-    set_secret_data(
-        session,
-        name=secret_name,
-        scoped_name=False,
-        data={
-            ".dockercfg": common.b64_secret(
-                json.dumps(
-                    {
-                        reg: {"username": "foo", "password": "bar", "auth": "foobar"}
-                        for reg in registries
-                    }
-                )
-            )
-        },
     )
 
 

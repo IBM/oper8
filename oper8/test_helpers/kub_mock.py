@@ -157,11 +157,11 @@ class MockKubClient(kubernetes.client.ApiClient):
     implementation of call_api() to use preconfigured responses
     """
 
-    def __init__(self, cluster_state={}, *args, **kwargs):
+    def __init__(self, cluster_state=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Save the current cluster state
-        self.__cluster_state = {} if cluster_state is None else cluster_state
+        self.__cluster_state = cluster_state or {}
         log.debug3("Cluster State: %s", self.__cluster_state)
 
         # Setup listener variables
@@ -214,7 +214,6 @@ class MockKubClient(kubernetes.client.ApiClient):
         query_params=None,
         header_params=None,
         body=None,
-        *args,
         **kwargs,
     ):
         """Mocked out call function to return preconfigured responses
@@ -241,7 +240,6 @@ class MockKubClient(kubernetes.client.ApiClient):
             query_params=query_params,
             header_params=header_params,
             body=body,
-            *args,
             **kwargs,
         )
 
@@ -369,21 +367,17 @@ class MockKubClient(kubernetes.client.ApiClient):
             # Add the handlers
             log.debug("Adding GET handler for: %s", resource_api_endpoint)
             self._handlers[resource_api_endpoint] = {
-                "GET": lambda *_, **__: (
-                    self.current_state_get(resource_api_endpoint, api_version, kind)
+                "GET": lambda *_, x=resource_api_endpoint, **__: (
+                    self.current_state_get(x, api_version, kind)
                 ),
-                "PUT": lambda body, *_, **__: (
-                    self.current_state_put(
-                        resource_api_endpoint, api_version, kind, body
-                    )
+                "PUT": lambda body, *_, x=resource_api_endpoint, **__: (
+                    self.current_state_put(x, api_version, kind, body)
                 ),
-                "PATCH": lambda body, *_, **__: (
-                    self.current_state_patch(
-                        resource_api_endpoint, api_version, kind, body
-                    )
+                "PATCH": lambda body, *_, x=resource_api_endpoint, **__: (
+                    self.current_state_patch(x, api_version, kind, body)
                 ),
-                "DELETE": lambda *_, **__: (
-                    self.current_state_delete(resource_api_endpoint, api_version, kind)
+                "DELETE": lambda *_, x=resource_api_endpoint, **__: (
+                    self.current_state_delete(x, api_version, kind)
                 ),
                 "WATCH": lambda resource_path, body, *_, **__: (
                     self.current_state_watch(
@@ -395,9 +389,9 @@ class MockKubClient(kubernetes.client.ApiClient):
             # Add status PUT
             status_resource_api_endpoint = "/".join([resource_api_endpoint, "status"])
             self._handlers[status_resource_api_endpoint] = {
-                "PUT": lambda body, *_, **__: (
+                "PUT": lambda body, *_, x=status_resource_api_endpoint, **__: (
                     self.current_state_put(
-                        status_resource_api_endpoint,
+                        x,
                         api_version,
                         kind,
                         body,
@@ -660,7 +654,7 @@ class MockKubClient(kubernetes.client.ApiClient):
         return self._make_response(resource_list)
 
     def current_state_watch(
-        self, api_endpoint, api_version, kind, resourced=False, query_params={}
+        self, api_endpoint, api_version, kind, resourced=False, query_params=None
     ):
         # Parse the endpoint for the namespace and name
         endpoint_parts = api_endpoint.split("/")
@@ -679,7 +673,7 @@ class MockKubClient(kubernetes.client.ApiClient):
             kind=kind,
             namespace=namespace,
             name=name,
-            timeout=query_params.get("timeoutSeconds"),
+            timeout=(query_params or {}).get("timeoutSeconds"),
         )
 
     def current_state_get(self, api_endpoint, api_version, kind):
