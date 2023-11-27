@@ -29,10 +29,8 @@ class ABCStaticMeta(abc.ABCMeta):
         # overwrite them to raise NotImplementedError if called
         for method_name in cls.__abstract_class_methods__:
 
-            def not_implemented(*_, **__):
-                raise NotImplementedError(
-                    f"Cannot invoke abstract class method {method_name}"
-                )
+            def not_implemented(*_, x=method_name, **__):
+                raise NotImplementedError(f"Cannot invoke abstract class method {x}")
 
             not_implemented.__original_signature__ = inspect.signature(
                 getattr(cls, method_name)
@@ -62,10 +60,8 @@ class ABCStaticMeta(abc.ABCMeta):
             ) in [original_signature, inspect.signature(base_method)]
             if not (is_classmethod or is_staticmethod):
                 raise NotImplementedError(
-                    "The method [{}] is an @classmethod @abstractmethod. {} implements it as an instance method".format(
-                        method_name,
-                        cls,
-                    )
+                    f"The method [{method_name}] is an @classmethod @abstractmethod. "
+                    f"{cls} implements it as an instance method"
                 )
 
 

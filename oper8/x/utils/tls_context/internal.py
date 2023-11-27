@@ -90,7 +90,8 @@ class InternalTlsContext(ITlsContext):
 
         if cache_key in self._server_pairs:
             log.warning(
-                "Certificate server key/cert pair for %s has been already requested. Ignoring this request.",
+                "Certificate server key/cert pair for %s has been already "
+                "requested. Ignoring this request.",
                 cache_key,
             )
             return

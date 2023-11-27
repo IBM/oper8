@@ -176,14 +176,16 @@ class CosConnection(DatastoreConnectionBase):
         uri_port_field = config_dict.get("uri_secret_port_field")
         uri_bucketname_field = config_dict.get("uri_secret_bucketname_field")
 
-        # First pull provided hostname/port secret if available and fill in hostname/port fields into config_dict
+        # First pull provided hostname/port secret if available and fill in
+        # hostname/port fields into config_dict
         if (
             uri_secret
             and uri_hostname_field
             and uri_port_field
             and uri_bucketname_field
         ):
-            # If we have provided host/port credentials, we need to extract them and place these values in our config dict
+            # If we have provided host/port credentials, we need to extract them
+            # and place these values in our config dict
             success, secret_content = session.get_object_current_state(
                 "Secret", uri_secret
             )

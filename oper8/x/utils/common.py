@@ -128,7 +128,8 @@ def get_replicas(
                     "offlineQuiesce", False
                 ):
                     log.debug(
-                        "Found [%s] with size [%s] and offlineQuiesce off. Need to scale up from [%s] replicas.",
+                        "Found [%s] with size [%s] and offlineQuiesce off. Need "
+                        "to scale up from [%s] replicas.",
                         name,
                         current_size,
                         replicas,

@@ -24,9 +24,11 @@ def request_server_key_cert_pair(
     *args,
     **kwargs,
 ) -> None:
-    """Request creation of the PEM encoded value of the key/cert pair for a given server.
-    This function has to be called from before render_chart is called. I.e., parse_config / Component constructor phase.
-    Implementations of this function will generate the pair (in background) if it has not been already requested.
+    """Request creation of the PEM encoded value of the key/cert pair for a
+    given server. This function has to be called from before render_chart is
+    called. I.e., parse_config / Component constructor phase. Implementations of
+    this function will generate the pair (in background) if it has not been
+    already requested.
 
     Args:
         session:  Session
@@ -43,10 +45,10 @@ def get_server_key_cert_pair(
     *args,
     **kwargs,
 ) -> Tuple[str, str]:
-    """Get the previously requested PEM encoded value of the key/cert pair for a given server.
-    Implementations will retrieveh the pair if it does not exist
-    and will fetch its content if it does. If the content is not available,
-    the assertion is triggered.
+    """Get the previously requested PEM encoded value of the key/cert pair for a
+    given server. Implementations will retrieveh the pair if it does not exist
+    and will fetch its content if it does. If the content is not available, the
+    assertion is triggered.
 
     Args:
         session:  Session
