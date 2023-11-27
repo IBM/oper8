@@ -9,7 +9,8 @@ import pytest
 
 # Local
 from oper8.exceptions import ConfigError, PreconditionError
-from oper8.test_helpers.oper8x_helpers import set_secret_data, setup_session
+from oper8.test_helpers.helpers import setup_session
+from oper8.test_helpers.oper8x_helpers import set_secret_data
 from oper8.x.datastores.redis.connection import RedisConnection
 from oper8.x.datastores.redis.factory import RedisFactory
 from oper8.x.utils import common, constants

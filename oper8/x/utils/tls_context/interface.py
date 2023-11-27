@@ -52,7 +52,7 @@ class ITlsContext(abc.ABC):
 
     ## Interface ###############################################################
 
-    def request_server_key_cert_pair(
+    def request_server_key_cert_pair(  # noqa: B027
         self,
         server_component: Component,
         san_hostnames_list: List[str],
@@ -60,9 +60,11 @@ class ITlsContext(abc.ABC):
         key_name: str = None,
         intermediate_ca: bool = False,
     ) -> None:
-        """Request creation of the PEM encoded value of the key/cert pair for a given server.
-        This function has to be called from before render_chart is called. I.e., parse_config / Component constructor phase.
-        Implementations of this function will generate the pair (in background) if it has not been already requested.
+        """Request creation of the PEM encoded value of the key/cert pair for a
+        given server. This function has to be called from before render_chart is
+        called. I.e., parse_config / Component constructor phase.
+        Implementations of this function will generate the pair (in background)
+        if it has not been already requested.
 
         Args:
             server_component:  Component
@@ -72,9 +74,11 @@ class ITlsContext(abc.ABC):
             san_hostnames_list:  List[str]
                 The list of Subject Alternate Names (hostnames only)
             san_ip_list:  List[str]
-                The list of Subject Alternate Names (ip addresses only, IPv4, IPv6)
+                The list of Subject Alternate Names (ip addresses only, IPv4,
+                IPv6)
             key_name:  str
-                In case component requires multiple certificates. The key_name is used to distinguies between component cert requests.
+                In case component requires multiple certificates. The key_name
+                is used to distinguishes between component cert requests.
             intermediate_ca:  bool
                 Whether or not to configure the certificate for use as an
                 intermediate CA. This implies setting the key_cert_sign usage
@@ -101,13 +105,18 @@ class ITlsContext(abc.ABC):
                 a new Component if needed that will manage the resource for the
                 derived content and configure dependencies.
             key_name:  str
-                In case component requires multiple certificates. The key_name is used to distinguies between component cert requests.
+                In case component requires multiple certificates. The key_name
+                is used to distinguies between component cert requests.
             encode:  bool
                 Whether or not to base64 encode the output pem strings
             existing_key_pem: str
-                Optionaly, you may provide the (decoded) value of PK/CERK pair. TLS context is free to check the Cert/PK and return this pair or generate new one.
+                Optionaly, you may provide the (decoded) value of PK/CERK pair.
+                TLS context is free to check the Cert/PK and return this pair or
+                generate new one.
             existing_cert_pem: str,
-                Optionaly, you may provide the (decoded) value of PK/CERK pair. TLS context is free to check the Cert/PK and return this pair or generate new one.
+                Optionaly, you may provide the (decoded) value of PK/CERK pair.
+                TLS context is free to check the Cert/PK and return this pair or
+                generate new one.
         Returns:
             key_pem:  Optional[str]
                 This is the pem-encoded key content (base64

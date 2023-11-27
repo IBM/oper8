@@ -45,9 +45,7 @@ def configure_logging():
         formatter="json"
         if os.environ.get("LOG_JSON", "").lower() == "true"
         else "pretty",
-        thread_id=True
-        if os.environ.get("LOG_THREAD_ID", "").lower() == "true"
-        else False,
+        thread_id=os.environ.get("LOG_THREAD_ID", "").lower() == "true",
     )
 
 
@@ -66,12 +64,13 @@ PULL_SECRET_NAME = "REPLACE_PULL_SECRET"
 def setup_cr(
     kind="Widget",
     api_version="foo.bar.com/v123",
-    deploy_config={},
+    deploy_config=None,
     version="1.2.3",
     name=TEST_INSTANCE_NAME,
     namespace=TEST_NAMESPACE,
     **kwargs,
 ):
+    deploy_config = deploy_config or {}
     cr_dict = kwargs or {}
     cr_dict.setdefault("kind", kind)
     cr_dict.setdefault("apiVersion", api_version)
@@ -132,7 +131,7 @@ def library_config(**config_overrides):
     yield
 
     # Revert to the old values
-    for key in config_overrides.keys():
+    for key in config_overrides:
         if key in old_vals:
             config_detail_dict[key] = old_vals[key]
         else:
@@ -160,7 +159,7 @@ def get_failable_method(fail_flag, method, failure_return=False):
                 return res
         elif fail_flag == "assert":
             log.debug4("Asserting in failable mock")
-            assert False, f"You told me to fail {method}!"
+            raise AssertionError(f"You told me to fail {method}!")
         elif fail_flag:
             log.debug4("Returning %s", failure_return)
             return failure_return
@@ -572,7 +571,7 @@ class DummyController(Controller):
     ## Implementation Details ##
     ############################
 
-    def _make_dummy_component(self, name="dummy", session=None, *args, **kwargs):
+    def _make_dummy_component(self, name="dummy", session=None, **kwargs):
         """This helper wraps any DummyComponent class so that the name class
         attribute is not overwritten by the next instance.
         """
@@ -581,7 +580,7 @@ class DummyController(Controller):
             pass
 
         WrappedDummyComponent.name = name
-        return WrappedDummyComponent(session=session, *args, **kwargs)
+        return WrappedDummyComponent(session=session, **kwargs)
 
 
 @controller(
@@ -689,9 +688,10 @@ def setup_vcs_project(
     controller_name="Controller",
     module_dir="src",
     module_name="test_module",
-    versions=["1.2.3"],
+    versions=None,
 ):
     # Make the parent directory and module directory
+    versions = versions or ["1.2.3"]
     parent_path = pathlib.Path(directory)
     parent_path.mkdir(exist_ok=True)
     module_path = parent_path / module_dir / module_name
@@ -699,24 +699,21 @@ def setup_vcs_project(
 
     # Open and template controller file
     template_file = pathlib.Path(TEST_DATA_DIR) / "controller.template"
-    controller_template_file = open(template_file)
-    controller_template = controller_template_file.read()
-    controller_template_file.close()
+    with open(template_file) as controller_template_file:
+        controller_template = controller_template_file.read()
 
     # Create controller file from template
-    controller_file = open(module_path / "controller.py", "w")
-    controller_file.write(
-        controller_template.format(
-            controller_name=controller_name,
-            components=str(components),
+    with open(module_path / "controller.py", "w") as controller_file:
+        controller_file.write(
+            controller_template.format(
+                controller_name=controller_name,
+                components=str(components),
+            )
         )
-    )
-    controller_file.close()
 
     # Create import file
-    import_file = open(module_path / "__init__.py", "w")
-    import_file.write(f"from .controller import {controller_name}")
-    import_file.close()
+    with open(module_path / "__init__.py", "w") as import_file:
+        import_file.write(f"from .controller import {controller_name}")
 
     config_path = pathlib.Path.home() / ".gitconfig"
     if not config_path.exists():

@@ -142,7 +142,7 @@ def get_deps_annotation(
     """
 
     content_hash = hashlib.sha1()
-    for i, dep in enumerate(dependencies):
+    for dep in dependencies:
         # Get the dict representation depending on what type this is
         if isinstance(dep, tuple):
             log.debug3("[%s] Handling tuple dependency: %s", resource_name, dep)

@@ -90,7 +90,7 @@ class MockedReconcileThread(ReconcileThread):
         deploy_manager=None,
         leadership_manager=None,
         subprocess_wait_time=0.1,
-        returned_messages=[[]],
+        returned_messages=None,
     ):
         self.requests = Queue()
         self.timer_events = Queue()
@@ -98,7 +98,7 @@ class MockedReconcileThread(ReconcileThread):
         self.processes_finished = 0
         self.watch_threads_created = 0
         self.subprocess_wait_time = subprocess_wait_time
-        self.returned_messages = returned_messages
+        self.returned_messages = returned_messages or [[]]
         super().__init__(deploy_manager, leadership_manager)
 
     def push_request(self, request: ReconcileRequest):
@@ -171,13 +171,13 @@ def make_resource(
     namespace="test",
     api_version="foo.bar.com/v1",
     name="foo",
-    spec={},
-    status={},
+    spec=None,
+    status=None,
     generation=1,
-    resource_version=random.randint(1, 1000),
-    annotations={},
-    labels={},
-    owner_refs=[],
+    resource_version=None,
+    annotations=None,
+    labels=None,
+    owner_refs=None,
 ):
     return {
         "kind": kind,
@@ -186,14 +186,14 @@ def make_resource(
             "name": name,
             "namespace": namespace,
             "generation": generation,
-            "resourceVersion": resource_version,
-            "ownerReferences": owner_refs,
-            "labels": labels,
+            "resourceVersion": resource_version or random.randint(1, 1000),
+            "ownerReferences": owner_refs or [],
+            "labels": labels or {},
             "uid": str(uuid4()),
-            "annotations": annotations,
+            "annotations": annotations or {},
         },
-        "spec": spec,
-        "status": status,
+        "spec": spec or {},
+        "status": status or {},
     }
 
 
@@ -206,9 +206,9 @@ def mocked_create_and_start_entrypoint(
     request: ReconcileRequest,
     result_pipe: Connection,
     wait_time=0.5,
-    returned_messages=[],
+    returned_messages=None,
 ):
     """"""
     time.sleep(wait_time)
-    for message in returned_messages:
+    for message in returned_messages or []:
         result_pipe.send(message)

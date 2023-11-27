@@ -35,6 +35,9 @@ VERIFY_FUNCTION = Callable[["Session"], bool]  # pylint: disable=invalid-name
 # or the one passed in as an argument
 _SESSION_NAMESPACE = "__SESSION_NAMESPACE__"
 
+# Forward declaration for Component
+COMPONENT_INSTANCE_TYPE = "Component"
+
 
 class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """A session is the core context manager for the state of an in-progress
@@ -214,11 +217,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
     ##
 
     @alog.logged_function(log.debug2)
-    def add_component(
-        self,
-        component: "Component",
-        disabled: bool = False,  # TODO: This is no longer needed since components have self.disabled pylint: disable=unused-argument,fixme
-    ):
+    def add_component(self, component: COMPONENT_INSTANCE_TYPE):
         """Add a component to this deploy associated with a specfic application
 
         Args:
@@ -231,8 +230,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def add_component_dependency(
         self,
-        component: Union[str, "Component"],
-        upstream_component: Union[str, "Component"],
+        component: Union[str, COMPONENT_INSTANCE_TYPE],
+        upstream_component: Union[str, COMPONENT_INSTANCE_TYPE],
         verify_function: Optional[VERIFY_FUNCTION] = None,
     ):
         """Add a dependency indicating that one component requires an upstream
@@ -284,7 +283,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
     ##
     def get_component(
         self, name: str, disabled: Optional[bool] = None
-    ) -> Optional["Component"]:
+    ) -> Optional[COMPONENT_INSTANCE_TYPE]:
         """Get an individual component by name
 
         Args:
@@ -310,7 +309,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
         return comp
 
-    def get_components(self, disabled: bool = False) -> List["Component"]:
+    def get_components(self, disabled: bool = False) -> List[COMPONENT_INSTANCE_TYPE]:
         """Get all components associated with an application
 
         Args:
@@ -338,8 +337,8 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def get_component_dependencies(
         self,
-        component: Union[str, "Component"],
-    ) -> List[Tuple["Component", Optional[VERIFY_FUNCTION]]]:
+        component: Union[str, COMPONENT_INSTANCE_TYPE],
+    ) -> List[Tuple[COMPONENT_INSTANCE_TYPE, Optional[VERIFY_FUNCTION]]]:
         """Get the list of (upstream_name, verify_function) tuples for a given
         component.
 

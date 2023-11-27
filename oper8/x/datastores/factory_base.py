@@ -173,8 +173,10 @@ class DatastoreSingletonFactoryBase(abc.ABC):
         )
         assert isinstance(connection_type, type) and issubclass(
             connection_type, DatastoreConnectionBase
-        ), "Incorrectly configured datastore [{}]. Must define [{}] as a DatastoreConnectionBase type".format(
-            cls, DatastoreSingletonFactoryBase._CONNECTION_TYPE_ATTRIBUTE
+        ), (
+            f"Incorrectly configured datastore [{cls}]. Must define "
+            f"[{DatastoreSingletonFactoryBase._CONNECTION_TYPE_ATTRIBUTE}] as "
+            "a DatastoreConnectionBase type"
         )
 
     @classmethod

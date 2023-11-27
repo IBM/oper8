@@ -127,12 +127,14 @@ class _TlsContextSingletonFactory:
             context_class:  Type[ITlsContext]
                 The ITlsContext child class to register
         """
-        assert hasattr(
-            context_class, ITlsContext._TYPE_LABEL_ATTRIBUTE
-        ), f"All derived ITlsContext classes must have an attribute {ITlsContext._TYPE_LABEL_ATTRIBUTE}"
+        assert hasattr(context_class, ITlsContext._TYPE_LABEL_ATTRIBUTE), (
+            "All derived ITlsContext classes must have an attribute "
+            f"{ITlsContext._TYPE_LABEL_ATTRIBUTE}"
+        )
         type_label = getattr(context_class, ITlsContext._TYPE_LABEL_ATTRIBUTE)
-        assert (
-            type_label not in cls._registered_types
-        ), f"Received non-unique {ITlsContext._TYPE_LABEL_ATTRIBUTE} for {context_class}: {type_label}"
+        assert type_label not in cls._registered_types, (
+            f"Received non-unique {ITlsContext._TYPE_LABEL_ATTRIBUTE} "
+            f"for {context_class}: {type_label}"
+        )
         log.debug2("Registering tls context type [%s]", type_label)
         cls._registered_types[type_label] = context_class

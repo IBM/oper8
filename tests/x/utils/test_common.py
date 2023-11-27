@@ -11,14 +11,14 @@ import alog
 
 # Local
 from oper8.exceptions import ConfigError
-from oper8.test_helpers.oper8x_helpers import (
+from oper8.test_helpers.helpers import (
     MockDeployManager,
     configure_logging,
-    set_object_test_state,
     setup_cr,
     setup_session,
 )
-from oper8.x.utils import common, constants
+from oper8.test_helpers.oper8x_helpers import set_object_test_state
+from oper8.x.utils import common
 
 configure_logging()
 log = alog.use_channel("TEST")

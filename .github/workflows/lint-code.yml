@@ -35,6 +35,5 @@ jobs:
           python -m pip install -r setup_requirements.txt
       - name: Check Formatting
         run: tox -e fmt
-      # TEMPORARY: This will be re-enabled once the initial port has been merged
-      # - name: Linting
-      #   run: tox -e lint
+      - name: Check Linting
+        run: tox -e lint

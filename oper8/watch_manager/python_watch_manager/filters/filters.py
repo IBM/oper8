@@ -41,7 +41,7 @@ class Filter(ABC):
     NOTE: A unique Filter instance is created for each resource
     """
 
-    def __init__(self, resource: ManagedObject):
+    def __init__(self, resource: ManagedObject):  # noqa: B027
         """Initializer can be used to detect configuration or create instance
         variables. Even though a resource is provided it should not set state until
         update is called
@@ -82,7 +82,7 @@ class Filter(ABC):
     #
     ##
 
-    def update(self, resource: ManagedObject):
+    def update(self, resource: ManagedObject):  # noqa: B027
         """Update the instances current state.
 
         Args:
@@ -294,10 +294,9 @@ class UserAnnotationFilter(AnnotationFilter):
     def contains_platform_key(self, key: str) -> bool:
         """Helper to check if the key contains one of the
         platform annotations"""
-        for reserved_key in RESERVED_PLATFORM_ANNOTATIONS:
-            if reserved_key in key:
-                return True
-        return False
+        return any(
+            reserved_key in key for reserved_key in RESERVED_PLATFORM_ANNOTATIONS
+        )
 
 
 ### Oper8 Filters
@@ -371,11 +370,9 @@ class LabelFilter(Filter):
         """Return true is a resource matches the requested labels"""
         resource_labels = resource.get("metadata", {}).get("labels")
         # Check to make sure every requested label matches
-        for label, value in self.labels.items():  # pylint: disable=no-member
-            if resource_labels.get(label) != value:
-                return False
-
-        return True
+        return all(
+            resource_labels.get(label) == value for label, value in self.labels.items()
+        )
 
 
 class DisableFilter(Filter):

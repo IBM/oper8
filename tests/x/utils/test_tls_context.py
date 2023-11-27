@@ -20,13 +20,12 @@ import alog
 
 # Local
 from oper8 import Component, component
-from oper8.test_helpers.oper8x_helpers import (
+from oper8.test_helpers.helpers import (
     MockDeployManager,
     configure_logging,
-    set_secret_data,
-    set_tls_ca_secret,
     setup_session,
 )
+from oper8.test_helpers.oper8x_helpers import set_secret_data, set_tls_ca_secret
 from oper8.x.utils import common, tls_context
 from oper8.x.utils.tls_context.factory import (
     _TlsContextSingletonFactory,

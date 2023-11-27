@@ -10,7 +10,7 @@ import aconfig
 import alog
 
 # Local
-from oper8.test_helpers.oper8x_helpers import configure_logging, setup_session
+from oper8.test_helpers.helpers import configure_logging, setup_session
 from oper8.x.utils.tls_context import factory, internal
 from tests.x.utils.tls_context.util import make_server_component_class
 

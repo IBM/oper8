@@ -225,12 +225,15 @@ class FilterManager(Filter):
             # There are two scenarios when filters only need to get updated not tested. The first
             # is when an "and" condition fails or when an "or" succeeds. In both instances we
             # know the end result so testing can be skipped for performance
-            if not update_only and not test_only:
-                if result and (
+            if (
+                (not update_only and not test_only)
+                and result
+                and (
                     (operation == operator.and_ and not result)
                     or (operation == operator.or_ and result)
-                ):
-                    update_only = True
+                )
+            ):
+                update_only = True
 
         # If no filter cared about the event then don't
         # reconcile

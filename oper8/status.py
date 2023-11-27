@@ -281,7 +281,7 @@ def update_application_status(current_status: dict, **kwargs) -> dict:
 
 
 def update_resource_status(
-    deploy_manager: "DeployManagerBase",
+    deploy_manager: "DeployManagerBase",  # noqa: F821
     kind: str,
     api_version: str,
     name: str,

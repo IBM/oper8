@@ -127,8 +127,10 @@ class TemporaryPatchComponent(Component):
         anno_content = annotations.get(TEMPORARY_PATCHES_ANNOTATION_NAME, "{}")
         try:
             existing_patches = json.loads(anno_content)
-        except (TypeError, json.decoder.JSONDecodeError):
-            raise ConfigError(f"Patch annotation is not valid json: {anno_content}")
+        except (TypeError, json.decoder.JSONDecodeError) as err:
+            raise ConfigError(
+                f"Patch annotation is not valid json: {anno_content}"
+            ) from err
         log.debug3("Existing Patches: %s", existing_patches)
         assert_config(
             isinstance(existing_patches, dict),
