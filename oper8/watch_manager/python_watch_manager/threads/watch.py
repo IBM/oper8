@@ -29,6 +29,9 @@ from .base import ThreadBase
 
 log = alog.use_channel("WTCHTHRD")
 
+# Forward declaration of ReconcileThread
+RECONCILE_THREAD_TYPE = "ReconcileThread"
+
 
 class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
     """The WatchThread monitors the cluster for changes to a specific GroupVersionKind either
@@ -40,7 +43,7 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        reconcile_thread: "ReconcileThread",
+        reconcile_thread: RECONCILE_THREAD_TYPE,
         kind: str,
         api_version: str,
         namespace: Optional[str] = None,
@@ -50,7 +53,7 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
         """Initialize a WatchThread by assigning instance variables and creating maps
 
         Args:
-            reconcile_thread: "ReconcileThread"
+            reconcile_thread: ReconcileThread
                 The reconcile thread to submit requests to
             kind: str
                 The kind to watch
@@ -410,7 +413,7 @@ watch_threads: Dict[str, WatchThread] = {}
 
 def create_resource_watch(
     watch_request: WatchRequest,
-    reconcile_thread: "ReconcileThread",
+    reconcile_thread: RECONCILE_THREAD_TYPE,
     deploy_manager: DeployManagerBase,
     leadership_manager: LeadershipManagerBase,
 ) -> WatchThread:
@@ -421,7 +424,7 @@ def create_resource_watch(
     Args:
         watch_request: WatchRequest
             The watch request to submit
-        reconcile_thread: "ReconcileThread"
+        reconcile_thread: ReconcileThread
             The ReconcileThread to submit ReconcileRequests to
         deploy_manager: DeployManagerBase
             The DeployManager to use with the Thread

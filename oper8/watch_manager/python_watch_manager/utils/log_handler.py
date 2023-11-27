@@ -3,7 +3,6 @@
 # Standard
 from logging import Formatter, LogRecord
 from logging.handlers import QueueHandler
-from typing import Any
 import copy
 
 # First Party
@@ -14,6 +13,9 @@ from ....managed_object import ManagedObject
 
 log = alog.use_channel("LOG-HANDLER")
 
+# Forward declaration of a queue for any type
+QUEUE_TYPE = "Queue[Any]"
+
 
 class LogQueueHandler(QueueHandler):
     """
@@ -21,7 +23,7 @@ class LogQueueHandler(QueueHandler):
     them to the root process via a multiprocess queue
     """
 
-    def __init__(self, queue: "Queue[Any]", manifest: ManagedObject = None):
+    def __init__(self, queue: QUEUE_TYPE, manifest: ManagedObject = None):
         """Initialize the queue handler and instance variables
 
         Args:

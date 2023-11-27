@@ -71,7 +71,7 @@ class ReconcileProcessDeployManager(OpenshiftDeployManager):
                 Extendable key word arguments to pass to parent
         """
         # Initialize ReconcileProcessEntrypoint Deploy Manager
-        super().__init__(owner_cr=controller_resource, *args, **kwargs)
+        super().__init__(*args, owner_cr=controller_resource, **kwargs)
 
         # Initialize required variables
         self.requested_watches = set()
@@ -287,58 +287,55 @@ class ReconcileProcessEntrypoint:  # pylint: disable=too-few-public-methods
         # the queue and any data in the buffer could cause the process to hang. This can
         # make it difficult to debug subprocesses if they fail before setting up the handler
         log.debug4("Redirecting to /dev/null")
-        null_file = open(  # pylint: disable=consider-using-with
-            os.devnull, "w", encoding="utf-8"
-        )
-        sys.stdout = null_file
-        sys.stderr = null_file
+        with open(os.devnull, "w", encoding="utf-8") as null_file:
+            sys.stdout = null_file
+            sys.stderr = null_file
 
-        log.info(
-            "ReconcileProcessEntrypoint for %s and with type: %s",
-            self.controller_type,
-            request.type,
-        )
-
-        # If controller_type has subsystems than set reconciliation to standalone mode.
-        # This forces the reconcile to be single threaded but allows for recursive reconciles
-        log.debug4("Checking for subsystem rollout")
-        if (
-            getattr(self.controller_type, "pwm_subsystems", [])
-            and config.python_watch_manager.subsystem_rollout
-        ):
-            config.standalone = True
-
-        # Create a custom deploy manager so we can insert functionality
-        deploy_manager = self.deploy_manager
-        if not deploy_manager:
-            deploy_manager = ReconcileProcessDeployManager(
-                result_pipe=result_pipe,
-                controller_resource=resource.definition,
-                controller_type=self.controller_type,
+            log.info(
+                "ReconcileProcessEntrypoint for %s and with type: %s",
+                self.controller_type,
+                request.type,
             )
 
-        # Create a reconciliation manager and start the reconcile
-        self.reconcile_manager = ReconcileManager(deploy_manager=deploy_manager)
+            # If controller_type has subsystems than set reconciliation to standalone mode.
+            # This forces the reconcile to be single threaded but allows for recursive reconciles
+            log.debug4("Checking for subsystem rollout")
+            if (
+                getattr(self.controller_type, "pwm_subsystems", [])
+                and config.python_watch_manager.subsystem_rollout
+            ):
+                config.standalone = True
 
-        finalize = request.type == KubeEventType.DELETED or resource.metadata.get(
-            "deletionTimestamp"
-        )
-        reconcile_result = self.reconcile_manager.safe_reconcile(
-            self.controller_type,
-            resource.definition,
-            finalize,
-        )
-        # Clear exception as it's not always pickleable
-        reconcile_result.exception = None
+            # Create a custom deploy manager so we can insert functionality
+            deploy_manager = self.deploy_manager
+            if not deploy_manager:
+                deploy_manager = ReconcileProcessDeployManager(
+                    result_pipe=result_pipe,
+                    controller_resource=resource.definition,
+                    controller_type=self.controller_type,
+                )
 
-        # Complete the reconcile by sending the result back up the pipe
-        # and explicitly close all remaining descriptors
-        log.info("Finished Reconcile for %s", resource_id)
-        log.debug3("Sending reconciliation result back to main process")
-        result_pipe.send(reconcile_result)
-        result_pipe.close()
-        logging_queue.close()
-        null_file.close()
+            # Create a reconciliation manager and start the reconcile
+            self.reconcile_manager = ReconcileManager(deploy_manager=deploy_manager)
+
+            finalize = request.type == KubeEventType.DELETED or resource.metadata.get(
+                "deletionTimestamp"
+            )
+            reconcile_result = self.reconcile_manager.safe_reconcile(
+                self.controller_type,
+                resource.definition,
+                finalize,
+            )
+            # Clear exception as it's not always pickleable
+            reconcile_result.exception = None
+
+            # Complete the reconcile by sending the result back up the pipe
+            # and explicitly close all remaining descriptors
+            log.info("Finished Reconcile for %s", resource_id)
+            log.debug3("Sending reconciliation result back to main process")
+            result_pipe.send(reconcile_result)
+            result_pipe.close()
+            logging_queue.close()
 
 
 def create_and_start_entrypoint(

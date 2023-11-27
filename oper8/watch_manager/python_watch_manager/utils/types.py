@@ -16,6 +16,12 @@ from ....managed_object import ManagedObject
 
 ### General Use Data Classes
 
+# Forward Declarations
+CONTROLLER_TYPE = "Controller"
+FILTER_MANAGER_TYPE = "FilterManager"
+FILTER_TYPE = "Filter"
+KUBE_EVENT_TYPE_TYPE = "KubeEventType"
+
 
 @dataclass(eq=True, frozen=True)
 class ResourceId:
@@ -80,7 +86,7 @@ class ResourceId:
 
     @classmethod
     def from_controller(
-        cls, controller: Type["Controller"], namespace: str = None
+        cls, controller: Type[CONTROLLER_TYPE], namespace: str = None
     ) -> "ResourceId":
         """Get a Controller's target as a resource id"""
         return cls(
@@ -136,7 +142,7 @@ class WatchedResource:
     # corresponding watch request. The key is the named_id of
     # the requester or None for default filters. This aligns with
     # the Controllers pwm_filters attribute
-    filters: Dict[str, "FilterManager"] = field(default_factory=dict)
+    filters: Dict[str, FILTER_MANAGER_TYPE] = field(default_factory=dict)
 
 
 @dataclass()
@@ -149,12 +155,12 @@ class WatchRequest:
     requester: ResourceId
 
     # Watch request must have either type or info
-    controller_type: Type["Controller"] = None
+    controller_type: Type[CONTROLLER_TYPE] = None
     controller_info: ClassInfo = None
 
     # Don't compare filters when checking equality as we
     # assume they're the same if they have the same controller
-    filters: List[Type["Filter"]] = field(default_factory=list, compare=False)
+    filters: List[Type[FILTER_TYPE]] = field(default_factory=list, compare=False)
     filters_info: List[Type[ClassInfo]] = field(default_factory=list, compare=False)
 
     def __hash__(self) -> int:
@@ -197,8 +203,8 @@ class ReconcileRequest:
     reconciled.
     """
 
-    controller_type: Type["Controller"]
-    type: Union[ReconcileRequestType, "KubeEventType"]
+    controller_type: Type[CONTROLLER_TYPE]
+    type: Union[ReconcileRequestType, KUBE_EVENT_TYPE_TYPE]
     resource: ManagedObject
     timestamp: datetime = datetime.now()
 

@@ -48,6 +48,11 @@ FILTER_CLASSES = {
 }
 
 
+# Forward Declarations
+CONTROLLER_TYPE = "Controller"
+CONTROLLER_CLASS_TYPE = Type[CONTROLLER_TYPE]
+RESOURCE_ID_TYPE = "ResourceId"
+
 ### Factory Filter Functions
 
 
@@ -79,12 +84,12 @@ def get_configured_filter() -> Filter:
 
 
 def get_filters_for_resource_id(
-    controller_type: Type["Controller"], resource_id: "ResourceId"
+    controller_type: CONTROLLER_CLASS_TYPE, resource_id: RESOURCE_ID_TYPE
 ) -> List[Filter]:
     """Get the filters for a particular resource_id given a controller_type
 
     Args:
-        controller_type: Type["Controller"]
+        controller_type: CONTROLLER_CLASS_TYPE
             The controller type whose filters we're inspecting
         resource_id: "ResourceId"
             The requested resource
