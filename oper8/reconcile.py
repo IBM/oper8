@@ -79,15 +79,15 @@ class ReconciliationResult:
 
 
 # Forward declarations of Controller
-CONTROLLER_CLASS_TYPE = Type["Controller"]  # noqa: F821
-CONTROLLER_INSTANCE_TYPE = "Controller"
+CONTROLLER_TYPE = "Controller"
+CONTROLLER_CLASS_TYPE = Type[CONTROLLER_TYPE]
 
 # Type helper for describing a controller. CONTROLLER_INFO
 # can be a str in the form "module.class", a Controller class that
 # will be initialized, or an already initialized Controller. While the
 # first two methods are preferred, an already created Controller can
 # be useful for tests and backwards compatibility
-CONTROLLER_INFO = Union[str, CONTROLLER_CLASS_TYPE, CONTROLLER_INSTANCE_TYPE]
+CONTROLLER_INFO = Union[str, CONTROLLER_CLASS_TYPE, CONTROLLER_TYPE]
 
 ## ReconcileManager #################################################################
 
@@ -484,7 +484,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
 
     def setup_session(
         self,
-        controller: CONTROLLER_INSTANCE_TYPE,
+        controller: CONTROLLER_TYPE,
         cr_manifest: aconfig.Config,
         deploy_manager: DeployManagerBase,
         reconciliation_id: str,
@@ -534,7 +534,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         )
 
     def run_controller(
-        self, controller: CONTROLLER_INSTANCE_TYPE, session: Session, is_finalizer: bool
+        self, controller: CONTROLLER_TYPE, session: Session, is_finalizer: bool
     ) -> ReconciliationResult:
         """Run the Controller's reconciliation or finalizer with the constructed Session.
         This function also updates the CR status and handles requeue logic.
@@ -776,7 +776,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
 
     def _configure_controller(
         self, controller_class: CONTROLLER_CLASS_TYPE
-    ) -> CONTROLLER_INSTANCE_TYPE:
+    ) -> CONTROLLER_TYPE:
         """Construct the Controller Class
 
         Args:
