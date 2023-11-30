@@ -83,7 +83,7 @@ Source = "https://github.com/IBM/oper8"
 
 [tool.setuptools.packages.find]
 where = [""]
-include = ["caikit", "caikit*"]
+include = ["oper8"]
 
 [tool.setuptools_scm]
 write_to = "oper8/_version.py"
@@ -97,7 +97,6 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py38"
-exclude = ["caikit/runtime/protobufs/*.py"]
 
 
 [tool.ruff.lint]
@@ -120,7 +119,6 @@ ignore = [
     # "I0021", # useless-suppression
     # "I0022", # deprecated-pragma
 
-    ## added messages in caikit
     # "I0023", # use-symbolic-message-instead
     # "C0103", # invalid-name
     # "C0115", # missing-class-docstring
