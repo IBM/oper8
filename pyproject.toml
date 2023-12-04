@@ -41,9 +41,13 @@ test-helpers = [
     "pytest>=6",
 ]
 
+tls-context = [
+    "cryptography>=41.0.4",
+]
+
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
-    "oper8[ansible, test-helpers]",
+    "oper8[ansible, test-helpers, tls-context]",
 ]
 
 ## Dev Extra Sets ##
