@@ -105,8 +105,10 @@ class DryRunWatchManager(WatchManagerBase):
         if (
             self._resource.get("kind") == resource.get("kind")
             and self._resource.get("apiVersion") == resource.get("apiVersion")
-            and resource_metadata.get("name") == resource_metadata.get("name")
-            and resource_metadata.get("namespace") == resource_metadata.get("namespace")
+            and resource_metadata.get("name")
+            == resource.get("metadata", {}).get("name")
+            and resource_metadata.get("namespace")
+            == resource.get("metadata", {}).get("namespace")
         ):
             return
 

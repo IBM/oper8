@@ -63,16 +63,16 @@ def check_status(
         api_version=cr.apiVersion,
     )
     assert obj is not None
-    assert obj.status
+    assert obj.get("status")
 
-    ready_cond = status.get_condition(status.READY_CONDITION, obj.status)
+    ready_cond = status.get_condition(status.READY_CONDITION, obj["status"])
     if ready_reason:
         assert ready_cond
         assert ready_cond["reason"] == ready_reason.value
     else:
         assert not ready_cond
 
-    update_cond = status.get_condition(status.UPDATING_CONDITION, obj.status)
+    update_cond = status.get_condition(status.UPDATING_CONDITION, obj["status"])
     if updating_reason:
         assert update_cond
         assert update_cond["reason"] == updating_reason.value
