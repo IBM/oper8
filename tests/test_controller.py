@@ -461,9 +461,9 @@ def test_should_requeue_error():
 
 
 def test_should_requeue_no_obj():
-    session = setup_session()
+    session = setup_session(deploy_initial_cr=False)
     ctrlr = DummyController()
-    assert ctrlr.should_requeue(session) == (True, RequeueParams())
+    assert ctrlr.should_requeue(session) == (False, RequeueParams())
 
 
 def test_should_requeue_failed_status():
