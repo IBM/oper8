@@ -254,12 +254,24 @@ def remove_finalizer(session: SESSION_TYPE, finalizer: str):
         "metadata": copy.deepcopy(session.metadata),
     }
 
-    # Remove the finalizer
-    manifest["metadata"]["finalizers"].remove(finalizer)
-    success, _ = session.deploy_manager.deploy([manifest])
+    # Check to see if the object exists in the cluster
+    success, found = session.get_object_current_state(
+        kind=session.kind,
+        api_version=session.api_version,
+        name=session.name,
+    )
+    assert_cluster(success, "Failed to look up CR for self")
 
-    # Once successfully removed from cluster than remove from session
-    assert_cluster(success, f"Failed remove finalizer {finalizer}")
+    # If still present in the cluster, update it without the finalizer
+    if found:
+        manifest["metadata"]["finalizers"].remove(finalizer)
+        success, _ = session.deploy_manager.deploy([manifest])
+
+        # Once successfully removed from cluster than remove from session
+        assert_cluster(success, f"Failed remove finalizer {finalizer}")
+
+    # If the finalizer has been confirmed to not be there, remove it from the
+    # in-memory finalizers
     session.finalizers.remove(finalizer)
 
 
