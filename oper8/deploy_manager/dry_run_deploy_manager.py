@@ -89,12 +89,19 @@ class DryRunDeployManager(DeployManagerBase):
                     log.debug2(
                         "Calling registered finalizer [%s] for [%s]", callback, key
                     )
-                    callback(content)
+                    callback(self._cluster_content[namespace][kind][api_version][name])
 
-                # If finalizers have been cleared than delete object
-                if not self._cluster_content[namespace][kind][api_version][name][
-                    "metadata"
-                ].get("finalizers"):
+                # If finalizers have been cleared and object hasn't already been deleted then
+                # remove the key
+                current_obj = (
+                    self._cluster_content.get(namespace, {})
+                    .get(kind, {})
+                    .get(api_version, {})
+                    .get(name, {})
+                )
+                if current_obj and not current_obj.get("metadata", {}).get(
+                    "finalizers", []
+                ):
                     with DRY_RUN_CLUSTER_LOCK:
                         self._delete_key(namespace, kind, api_version, name)
 

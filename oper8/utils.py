@@ -216,7 +216,11 @@ def add_finalizer(session: SESSION_TYPE, finalizer: str):
 
     log.debug("Adding finalizer: %s", finalizer)
 
-    manifest = copy.deepcopy(session.cr_manifest)
+    manifest = {
+        "kind": session.kind,
+        "apiVersion": session.api_version,
+        "metadata": copy.deepcopy(session.metadata),
+    }
     manifest["metadata"].setdefault("finalizers", []).append(finalizer)
     success, _ = session.deploy_manager.deploy([manifest])
 
@@ -243,7 +247,14 @@ def remove_finalizer(session: SESSION_TYPE, finalizer: str):
 
     log.debug("Removing finalizer: %s", finalizer)
 
-    manifest = copy.deepcopy(session.cr_manifest)
+    # Create manifest with only required fields
+    manifest = {
+        "kind": session.kind,
+        "apiVersion": session.api_version,
+        "metadata": copy.deepcopy(session.metadata),
+    }
+
+    # Remove the finalizer
     manifest["metadata"]["finalizers"].remove(finalizer)
     success, _ = session.deploy_manager.deploy([manifest])
 
