@@ -34,7 +34,7 @@ oper8 = "oper8.__main__:main"
 
 ansible = [
     # This will isntall the k8s extension module needed to actually run
-    "ansible==2.9",
+    "ansible==9.1.0",
 ]
 
 test-helpers = [
