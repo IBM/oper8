@@ -304,3 +304,16 @@ def test_remove_finalizer(cr, finalizer, expected_finalizers):
     )
     assert success
     assert set(obj["metadata"]["finalizers"]) == set(expected_finalizers)
+
+
+def test_remove_finalizer_not_found():
+    """Make sure that when the resource has already been removed from the
+    cluster, there is no error on remove_finalizer
+    """
+    session = setup_session(full_cr=setup_cr(), deploy_initial_cr=False)
+    utils.remove_finalizer(session, "testfinalizer")
+    success, obj = session.get_object_current_state(
+        session.kind, session.name, session.api_version
+    )
+    assert success
+    assert not obj
