@@ -89,6 +89,7 @@ def setup_session(
     full_cr=None,
     deploy_manager=None,
     namespace=TEST_NAMESPACE,
+    deploy_initial_cr=True,
     **kwargs,
 ):
     app_config = app_config or aconfig.Config({}, override_env_vars=False)
@@ -96,7 +97,12 @@ def setup_session(
     full_cr = full_cr or setup_cr(
         deploy_config=deploy_config, version=version, namespace=namespace
     )
-    deploy_manager = deploy_manager or MockDeployManager(resources=[full_cr])
+    if not deploy_manager:
+        deploy_manager = (
+            MockDeployManager(resources=[full_cr])
+            if deploy_initial_cr
+            else MockDeployManager()
+        )
 
     return Session(
         reconciliation_id=str(uuid.uuid4()),
