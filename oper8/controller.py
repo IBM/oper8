@@ -221,9 +221,10 @@ class Controller(abc.ABC):
                 "Failed to fetch current state for %s/%s/%s", namespace, kind, name
             )
             return True, requeue_params
+        # Do not requeue if resource was deleted
         if not current_state:
             log.warning("Resource not found: %s/%s/%s", namespace, kind, name)
-            return True, requeue_params
+            return False, requeue_params
 
         log.debug3("Current CR manifest for requeue check: %s", current_state)
 
