@@ -243,7 +243,19 @@ def remove_finalizer(session: SESSION_TYPE, finalizer: str):
 
     log.debug("Removing finalizer: %s", finalizer)
 
-    manifest = copy.deepcopy(session.cr_manifest)
+    # Create manifest with only required fields
+    manifest = {
+        "kind":session.cr_manifest.kind,
+        "apiVersion":session.cr_manifest.api_version,
+        "metadata":{
+            "name": session.cr_manifest.name,
+            "finalizers":session.finalizers
+        }
+    }
+    if session.cr_manifest.namespace:
+        manifest["namespace"] = session.cr_manifest.namespace
+
+    # Remote the finalizer
     manifest["metadata"]["finalizers"].remove(finalizer)
     success, _ = session.deploy_manager.deploy([manifest])
 
