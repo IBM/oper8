@@ -68,7 +68,7 @@ dev-docs = [
 
 dev-fmt = [
     "pre-commit>=3.0.4,<4.0",
-    "ruff==0.1.9",
+    "ruff==0.1.10",
 ]
 
 dev-build = [
