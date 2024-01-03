@@ -19,7 +19,7 @@ dependencies = [
     "python-dateutil>=2.8.1,<3",
     "deepdiff>=5.0.2,<7",
     "jsonpatch>=1.26,<2",
-    "semver>=2.13.0,<3",
+    "semver>=2.13.0,<4",
     "kubernetes>=25.3.0,<29",
     "pygit2>=1.12.0,<2",
 ]
