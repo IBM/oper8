@@ -50,7 +50,7 @@ class WatchManagerBase(abc.ABC):
 
     @abc.abstractmethod
     def watch(self) -> bool:
-        """The watch function is responsible for initializing the persistant
+        """The watch function is responsible for initializing the persistent
         watch and returning whether or not the watch was started successfully.
 
         Returns:
