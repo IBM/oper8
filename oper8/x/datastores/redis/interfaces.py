@@ -7,7 +7,7 @@ from abc import abstractmethod
 from typing import Optional
 
 # Local
-from ... import component
+from .... import component
 from ..interfaces import Datastore
 from .connection import RedisConnection
 
