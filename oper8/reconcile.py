@@ -5,7 +5,7 @@ This setups up the session, constructs the controller, and runs its reconcile
 
 # Standard
 from dataclasses import dataclass, field
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Set, Type, Union
 import base64
 import copy
 import datetime
@@ -691,6 +691,42 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         self.vcs.checkout_ref(version, checkout_dir, checkout_method)
         return checkout_dir
 
+    @staticmethod
+    def _unimport_controller_module(module_name: str) -> Set[str]:
+        """Helper to un-import the given module and its parents/siblings/
+        children
+
+        Args:
+            module_name: str
+                The name of the module that holds the Controller
+
+        Returns:
+            reimport_modules: Set[str]
+                All modules that were unimported and will need to be reimported
+        """
+        reimport_modules = set()
+        if module_name in sys.modules:
+            log.debug2("UnImporting controller module: %s", module_name)
+            sys.modules.pop(module_name)
+            reimport_modules.add(module_name)
+
+        # UnImport the controller and any parent/sibling/child modules so
+        # controller can be reimported from the most recent sys path
+        module_parts = module_name.split(".")
+        for i in range(1, len(module_parts)):
+            parent_module = ".".join(module_parts[:-i])
+            if parent_module in sys.modules:
+                log.debug3("UnImporting module: %s", parent_module)
+                if sys.modules.pop(parent_module, None):
+                    reimport_modules.add(parent_module)
+        for child_module in [
+            mod_name for mod_name in sys.modules if mod_name.startswith(module_parts[0])
+        ]:
+            log.debug3("UnImporting child module: %s", child_module)
+            if sys.modules.pop(child_module, None):
+                reimport_modules.add(child_module)
+        return reimport_modules
+
     def _import_controller(
         self, controller_info: CONTROLLER_INFO
     ) -> CONTROLLER_CLASS_TYPE:
@@ -718,53 +754,59 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             module_name = controller_info.__module__
 
         # Reimport module if reimporting is enabled and if it already exists
-        if self.reimport_controller and module_name in sys.modules:
-            log.debug2("UnImporting controller module: %s", module_name)
-            sys.modules.pop(module_name)
+        log.debug3(
+            "Running controller %s from module %s [reimport? %s, in sys.modules? %s]",
+            class_name,
+            module_name,
+            self.reimport_controller,
+            module_name in sys.modules,
+        )
+        reimport_modules = {module_name}
+        if self.reimport_controller:
+            reimport_modules = reimport_modules.union(
+                self._unimport_controller_module(module_name)
+            )
 
-            # UnImport the controller and any parent modules
-            # so controller can be reimported from the most
-            # recent sys path
-            module_parts = module_name.split(".")
-            for i in range(1, len(module_parts)):
-                parent_module = ".".join(module_parts[:-i])
-                if parent_module in sys.modules:
-                    log.debug3("UnImporting module: %s", parent_module)
-                    sys.modules.pop(parent_module, None)
-
+        # Attempt to import the modules
         log.debug2("Attempting to import [%s.%s]", module_name, class_name)
+        for reimport_name in reimport_modules:
+            try:
+                app_module = importlib.import_module(reimport_name)
+                if reimport_name == module_name:
+                    if not hasattr(app_module, class_name):
+                        raise ConfigError(
+                            f"Invalid controller_class [{class_name}]."
+                            f" Class not found in module [{reimport_name}]"
+                        )
+                    controller_class = getattr(app_module, class_name)
 
-        # Attempt to import the module
-        try:
-            app_module = importlib.import_module(module_name)
-            if not hasattr(app_module, class_name):
-                raise ConfigError(
-                    f"Invalid controller_class [{class_name}]."
-                    f" Class not found in module [{module_name}]"
-                )
-            controller_class = getattr(app_module, class_name)
+                    # Import controller in function to avoid circular imports
+                    # Local
+                    from .controller import (  # pylint: disable=import-outside-toplevel
+                        Controller,
+                    )
 
-            # Import controller in function to avoid circular imports
-            # Local
-            from .controller import (  # pylint: disable=import-outside-toplevel
-                Controller,
-            )
+                    if not issubclass(controller_class, Controller):
+                        raise ConfigError(
+                            f"Invalid controller_class [{module_name}.{class_name}]."
+                            f" [{class_name}] is not a Controller"
+                        )
 
-            if not issubclass(controller_class, Controller):
-                raise ConfigError(
-                    f"Invalid controller_class [{module_name}.{class_name}]."
-                    f" [{class_name}] is not a Controller"
-                )
-
-        except ImportError as exc:
-            log.error(
-                "Failed to import [%s.%s]. Failed to import [%s]",
-                module_name,
-                class_name,
-                module_name,
-                exc_info=True,
-            )
-            raise ConfigError("Invalid Controller Class Specified") from exc
+            except ImportError as exc:
+                # If this is the module that holds the controller, it _needs_ to
+                # be reimported
+                if reimport_name == module_name:
+                    log.error(
+                        "Failed to import [%s.%s]. Failed to import [%s]",
+                        reimport_name,
+                        class_name,
+                        reimport_name,
+                        exc_info=True,
+                    )
+                    raise ConfigError("Invalid Controller Class Specified") from exc
+                # Otherwise, it's ok for import to fail
+                else:
+                    log.debug("Not able to reimport %s", reimport_name)
 
         log.debug(
             "Imported Controller %s from file %s",
