@@ -132,9 +132,12 @@ class _TlsContextSingletonFactory:
             f"{ITlsContext._TYPE_LABEL_ATTRIBUTE}"
         )
         type_label = getattr(context_class, ITlsContext._TYPE_LABEL_ATTRIBUTE)
-        assert type_label not in cls._registered_types, (
-            f"Received non-unique {ITlsContext._TYPE_LABEL_ATTRIBUTE} "
-            f"for {context_class}: {type_label}"
-        )
+        if type_label in cls._registered_types:
+            log.warning(
+                "Received non-unique %s for %s: %s",
+                ITlsContext._TYPE_LABEL_ATTRIBUTE,
+                context_class,
+                type_label,
+            )
         log.debug2("Registering tls context type [%s]", type_label)
         cls._registered_types[type_label] = context_class
