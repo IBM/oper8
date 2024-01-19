@@ -148,9 +148,8 @@ class DatastoreSingletonFactoryBase(abc.ABC):
         datastore_type_classes = cls._type_constructors.setdefault(
             cls.datastore_type, {}
         )
-        assert (
-            type_class.TYPE_LABEL not in datastore_type_classes
-        ), f"Got duplicate registration for {type_class.TYPE_LABEL}"
+        if type_class.TYPE_LABEL in datastore_type_classes:
+            log.warning("Got duplicate registration for %s", type_class.TYPE_LABEL)
         datastore_type_classes[type_class.TYPE_LABEL] = type_class
 
     ## Implementation Details ##################################################

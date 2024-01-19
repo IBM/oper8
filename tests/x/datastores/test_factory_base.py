@@ -524,3 +524,11 @@ def test_get_connection_no_config_or_instance():
     session = setup_session(app_config=app_config_overrides)
     with pytest.raises(AssertionError):
         TestFactory.get_connection(session, instance_name)
+
+
+def test_reregister_ok():
+    """Make sure that a type can be re-registered without raising. This is
+    needed when registration is done in a derived library that uses the PWM and
+    therefore re-imports the derived implementation.
+    """
+    TestFactory.register_type(TestDatastoreOne)

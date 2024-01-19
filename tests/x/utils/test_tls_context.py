@@ -30,8 +30,9 @@ from oper8.x.utils import common, tls_context
 from oper8.x.utils.tls_context.factory import (
     _TlsContextSingletonFactory,
     get_tls_context,
+    register_tls_context_type,
 )
-from oper8.x.utils.tls_context.internal import InternalCaComponent
+from oper8.x.utils.tls_context.internal import InternalCaComponent, InternalTlsContext
 
 ## Helpers #####################################################################
 
@@ -491,3 +492,11 @@ def test_get_tls_context_config_overrides():
     """
     session = setup_session(app_config={"tls": {"type": "invalid"}})
     get_tls_context(session, config_overrides=INTERNAL_TLS_OVERRIDES["tls"])
+
+
+def test_reregister_ok():
+    """Make sure that a type can be re-registered without raising. This is
+    needed when registration is done in a derived library that uses the PWM and
+    therefore re-imports the derived implementation.
+    """
+    register_tls_context_type(InternalTlsContext)
