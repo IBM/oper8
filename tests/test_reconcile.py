@@ -3,6 +3,7 @@
 # Standard
 from datetime import datetime, timedelta
 from unittest import mock
+import copy
 import json
 import os
 import pathlib
@@ -696,6 +697,12 @@ def test_reimport_controller(reimport_controller):
 
     rm = ReconcileManager(reimport_controller=reimport_controller)
 
+    # There are some race conditions with all of the reimporting in other tests
+    # and fixures, so we explicitly import it here to ensure that it's in
+    # sys.modules
+    # Local
+    from oper8.test_helpers.helpers import DummyController
+
     # Add attribute to module to test if it was successfully reimported
     sys.modules[DummyController.__module__].imported = True
 
@@ -707,6 +714,32 @@ def test_reimport_controller(reimport_controller):
         assert not hasattr(sys.modules[imported_controller.__module__], "imported")
     else:
         assert sys.modules[imported_controller.__module__].imported
+
+
+def test_unimport_controller_class():
+    """Test that _unimport_controller_class correctly removes all parents,
+    siblings, children, and cousins from sys.modules
+    """
+    mod_name = "foo.bar"
+    mods = {
+        # Self
+        mod_name: 1,
+        # Parent
+        "foo": 2,
+        # Child
+        "foo.bar.bif": 3,
+        # Sibling
+        "foo.baz": 4,
+        # Cousin
+        "foo.baz.bonk": 5,
+        # No relation!
+        "asdf": 6,
+    }
+    with mock.patch("sys.modules", new=copy.copy(mods)):
+        unimported_modules = ReconcileManager._unimport_controller_module(mod_name)
+        assert unimported_modules == {mod for mod in mods if mod.startswith("foo")}
+        assert "asdf" in sys.modules
+        assert not any(mod in sys.modules for mod in unimported_modules)
 
 
 ################################
