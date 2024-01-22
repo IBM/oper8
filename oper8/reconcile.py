@@ -720,7 +720,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 if sys.modules.pop(parent_module, None):
                     reimport_modules.add(parent_module)
         for child_module in [
-            mod_name for mod_name in sys.modules if mod_name.startswith(module_parts[0])
+            mod_name
+            for mod_name in sys.modules
+            if mod_name.startswith(f"{module_parts[0]}.")
         ]:
             log.debug3("UnImporting child module: %s", child_module)
             if sys.modules.pop(child_module, None):
