@@ -61,6 +61,11 @@ python_watch_manager:
   watch_dependent_resources: false
   subsystem_rollout: false
 
+  # If set to a valid location, the heartbeat thread will be enabled to
+  # periodically dump the current time to the given file
+  heartbeat_file: null
+  heartbeat_period: 30s
+
   # watch filter used to reduce the amount of reconciles. The following
   # filters are available by default, or you can supply a custom filter via
   # the module.Filter notation.
