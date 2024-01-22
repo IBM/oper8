@@ -16,7 +16,7 @@ from ...deploy_manager import OpenshiftDeployManager
 from ..base import WatchManagerBase
 from .filters import get_filters_for_resource_id
 from .leader_election import LeadershipManagerBase, get_leader_election_class
-from .threads import ReconcileThread, WatchThread
+from .threads import HeartbeatThread, ReconcileThread, WatchThread
 from .threads.watch import create_resource_watch, get_resource_watches
 from .utils import ResourceId, WatchRequest
 
@@ -72,6 +72,12 @@ class PythonWatchManager(WatchManagerBase):
             deploy_manager=self.deploy_manager,
             leadership_manager=self.leadership_manager,
         )
+        self.heartbeat_thread: Optional[HeartbeatThread] = None
+        if config.python_watch_manager.heartbeat_file:
+            self.heartbeat_thread = HeartbeatThread(
+                config.python_watch_manager.heartbeat_file,
+                config.python_watch_manager.heartbeat_period,
+            )
 
         # Start thread for each resource watch
         self.controller_watches: List[WatchThread] = []
@@ -105,6 +111,9 @@ class PythonWatchManager(WatchManagerBase):
         for watch_thread in self.controller_watches:
             log.debug("Starting watch_thread: %s", watch_thread)
             watch_thread.start_thread()
+        if self.heartbeat_thread:
+            log.debug("Starting heartbeat_thread")
+            self.heartbeat_thread.start()
         return True
 
     def wait(self):
@@ -132,6 +141,8 @@ class PythonWatchManager(WatchManagerBase):
             watch.stop_thread()
         self.reconcile_thread.stop_thread()
         self.leadership_manager.release()
+        if self.heartbeat_thread:
+            self.heartbeat_thread.stop_thread()
 
     ## Helper Functions ###############################################################
 
