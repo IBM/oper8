@@ -263,7 +263,9 @@ class Singleton(type):
         if getattr(cls, "_disable_singleton", False):
             return type.__call__(cls, *args, **kwargs)
 
-        if not hasattr(cls, "_instance"):
+        # The _instance is attached to the class itself without looking upwards
+        # into any parent classes
+        if "_instance" not in cls.__dict__:
             cls._instance = type.__call__(cls, *args, **kwargs)
         return cls._instance
 
