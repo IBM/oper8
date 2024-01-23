@@ -3,18 +3,26 @@ Tests for the Python Watch Manager
 """
 # Standard
 from contextlib import contextmanager
+import copy
 import time
 
 # Third Party
 import pytest
 
-# First Party
-import alog
-
 # Local
 from oper8.deploy_manager.dry_run_deploy_manager import DryRunDeployManager
-from oper8.test_helpers.helpers import DummyController
-from oper8.test_helpers.pwm_helpers import MockedReconcileThread, make_managed_object
+from oper8.test_helpers.helpers import (
+    DummyController,
+    config_detail_dict,
+    library_config,
+)
+from oper8.test_helpers.pwm_helpers import (
+    MockedReconcileThread,
+    heartbeat_file,
+    make_managed_object,
+    read_heartbeat_file,
+)
+from oper8.utils import merge_configs
 from oper8.watch_manager import PythonWatchManager, WatchManagerBase
 from oper8.watch_manager.python_watch_manager.threads import watch
 from oper8.watch_manager.python_watch_manager.threads.reconcile import ReconcileThread
@@ -133,3 +141,28 @@ def test_python_watch_manager_singleton():
     assert id(watch_manager.reconcile_thread) == id(
         second_watch_manager.reconcile_thread
     )
+
+
+def test_python_watch_manager_heartbeat(heartbeat_file):
+    """Test that when configured, PWM keeps a heartbeat file"""
+    pwm_config = merge_configs(
+        copy.deepcopy(config_detail_dict.python_watch_manager),
+        {"heartbeat_file": heartbeat_file, "heartbeat_period": "1s"},
+    )
+    with library_config(python_watch_manager=pwm_config):
+        dm = DryRunDeployManager()
+        with mock_reconcile_thread(dm):
+            watch_manager = PythonWatchManager(DummyPythonWatchManagerController, dm)
+            assert watch_manager.heartbeat_thread
+
+            # Start it and wait for a heartbeat
+            assert watch_manager.watch()
+            assert watch_manager.reconcile_thread.is_alive()
+            watch_manager.heartbeat_thread.wait_for_beat()
+
+            # Make sure the heartbeat writes to a file continuously
+            hb1 = read_heartbeat_file(heartbeat_file)
+            watch_manager.heartbeat_thread.wait_for_beat()
+            hb2 = read_heartbeat_file(heartbeat_file)
+            assert hb2 > hb1
+            watch_manager.stop()

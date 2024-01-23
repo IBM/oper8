@@ -113,7 +113,7 @@ class PythonWatchManager(WatchManagerBase):
             watch_thread.start_thread()
         if self.heartbeat_thread:
             log.debug("Starting heartbeat_thread")
-            self.heartbeat_thread.start()
+            self.heartbeat_thread.start_thread()
         return True
 
     def wait(self):
