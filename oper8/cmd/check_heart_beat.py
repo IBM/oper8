@@ -4,30 +4,20 @@ This is the main entrypoint command for running the operator
 # Standard
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional, Type
 import argparse
-import importlib
-import os
-import signal
-
-# Third Party
-import yaml
 
 # First Party
 import alog
 
 # Local
-from .. import config, watch_manager
-from ..controller import Controller
-from ..deploy_manager import DryRunDeployManager
-from ..exceptions import ConfigError
+from .. import config
 from ..watch_manager.python_watch_manager.threads.heartbeat import HeartbeatThread
 from .base import CmdBase
 
 log = alog.use_channel("MAIN")
 
 
-class RunHealthCheckCmd(CmdBase):
+class CheckHeartbeatCmd(CmdBase):
     __doc__ = __doc__
 
     ## Interface ##
@@ -36,8 +26,8 @@ class RunHealthCheckCmd(CmdBase):
         self,
         subparsers: argparse._SubParsersAction,
     ) -> argparse.ArgumentParser:
-        parser = subparsers.add_parser("health-check", help=__doc__)
-        runtime_args = parser.add_argument_group("Health Check Configuration")
+        parser = subparsers.add_parser("check-heartbeat", help=__doc__)
+        runtime_args = parser.add_argument_group("Check Heartbeat Configuration")
         runtime_args.add_argument(
             "--delta",
             "-d",

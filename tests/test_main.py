@@ -419,7 +419,7 @@ def test_valid_health_check():
         file_path = Path(named_temp_file.name)
         file_path.write_text(datetime.now().strftime(HeartbeatThread._DATE_FORMAT))
 
-        sys.argv.extend(["health-check", "--file", str(file_path), "--delta", "120"])
+        sys.argv.extend(["check-heartbeat", "--file", str(file_path), "--delta", "120"])
         main()
 
 
@@ -431,13 +431,13 @@ def test_to_old_health_check():
         old_time = datetime.now() - timedelta(seconds=100)
         file_path.write_text(old_time.strftime(HeartbeatThread._DATE_FORMAT))
 
-        sys.argv.extend(["health-check", "--file", str(file_path), "--delta", "10"])
+        sys.argv.extend(["check-heartbeat", "--file", str(file_path), "--delta", "10"])
         with pytest.raises(KeyError):
             main()
 
 
 def test_no_file_health_check():
     """Ensure that the health check"""
-    sys.argv.extend(["health-check", "--file", "/some/file", "--delta", "10"])
+    sys.argv.extend(["check-heartbeat", "--file", "/some/file", "--delta", "10"])
     with pytest.raises(FileNotFoundError):
         main()
