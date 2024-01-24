@@ -24,9 +24,9 @@ class TimerThread(ThreadBase, metaclass=Singleton):
     to threading.Timer stdlib class except that it uses one shared thread for all events
     instead of a thread per event."""
 
-    def __init__(self):
+    def __init__(self, name: Optional[str] = None):
         """Initialize a priorityqueue like object and a synchronization object"""
-        super().__init__(name="timer_thread", daemon=True)
+        super().__init__(name=name or "timer_thread", daemon=True)
 
         # Use a heap queue instead of a queue.PriorityQueue as we're already handling
         # synchronization with the notify condition

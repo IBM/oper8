@@ -70,6 +70,12 @@ python_watch_manager:
   reconcile_period:
     type: str
 
+  heartbeat_file:
+    type: str
+    optional: true
+  heartbeat_period:
+    type: str
+
   process_context:
     type: str
   watch_dependent_resources:

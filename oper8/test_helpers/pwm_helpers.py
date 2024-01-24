@@ -2,12 +2,14 @@
 Utils and common classes for the python watch manager tests
 """
 # Standard
+from datetime import datetime
 from multiprocessing.connection import Connection
 from queue import Queue
 from threading import Event
 from uuid import uuid4
 import multiprocessing
 import random
+import tempfile
 import time
 
 # Third Party
@@ -31,6 +33,7 @@ from oper8.watch_manager.python_watch_manager.leader_election.lease import (
 from oper8.watch_manager.python_watch_manager.leader_election.life import (
     LeaderForLifeManager,
 )
+from oper8.watch_manager.python_watch_manager.threads.heartbeat import HeartbeatThread
 from oper8.watch_manager.python_watch_manager.threads.reconcile import ReconcileThread
 from oper8.watch_manager.python_watch_manager.threads.timer import TimerThread
 from oper8.watch_manager.python_watch_manager.utils.types import (
@@ -76,6 +79,10 @@ class MockedLeaderWithLeaseManager(LeaderWithLeaseManager):
 
 
 class MockedTimerThread(TimerThread):
+    _disable_singleton = True
+
+
+class MockedHeartbeatThread(HeartbeatThread):
     _disable_singleton = True
 
 
@@ -212,3 +219,17 @@ def mocked_create_and_start_entrypoint(
     time.sleep(wait_time)
     for message in returned_messages or []:
         result_pipe.send(message)
+
+
+def read_heartbeat_file(hb_file: str) -> datetime:
+    """Parse a heartbeat file into a datetime"""
+    with open(hb_file) as handle:
+        hb_str = handle.read()
+
+    return datetime.strptime(hb_str, HeartbeatThread._DATE_FORMAT)
+
+
+@pytest.fixture
+def heartbeat_file():
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        yield tmp_file.name
