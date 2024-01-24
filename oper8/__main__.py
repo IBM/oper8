@@ -12,7 +12,7 @@ import aconfig
 import alog
 
 # Local
-from .cmd import CmdBase, RunOperatorCmd, SetupVCSCmd
+from .cmd import CmdBase, RunHealthCheckCmd, RunOperatorCmd, SetupVCSCmd
 from .component import config
 from .config import library_config
 from .log_format import Oper8JsonFormatter
@@ -101,6 +101,8 @@ def main():
     run_operator_parser, library_config_setters = add_command(
         subparsers, run_operator_cmd
     )
+    run_health_check_cmd = RunHealthCheckCmd()
+    add_command(subparsers, run_health_check_cmd)
     setup_vcs_cmd = SetupVCSCmd()
     add_command(subparsers, setup_vcs_cmd)
 
