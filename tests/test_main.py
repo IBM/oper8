@@ -3,6 +3,8 @@ Tests for the __main__.py entrypoint to the library as an executable
 """
 
 # Standard
+from datetime import datetime, timedelta
+from pathlib import Path
 from unittest import mock
 import os
 import sys
@@ -24,6 +26,7 @@ from oper8.test_helpers.helpers import (
     library_config,
     mock_sys_exit,
 )
+from oper8.watch_manager.python_watch_manager.threads.heartbeat import HeartbeatThread
 
 log = alog.use_channel("TEST")
 
@@ -407,3 +410,34 @@ def test_invalid_single_controller_type_not_found():
     assert not FooComponent.CONSTRUCTED
     assert not BarComponent.CONSTRUCTED
     assert not SubsystemComponent.CONSTRUCTED
+
+
+############################### Health Check CMD ###############################
+def test_valid_health_check():
+    """Ensure that the health check"""
+    with tempfile.NamedTemporaryFile() as named_temp_file:
+        file_path = Path(named_temp_file.name)
+        file_path.write_text(datetime.now().strftime(HeartbeatThread._DATE_FORMAT))
+
+        sys.argv.extend(["check-heartbeat", "--file", str(file_path), "--delta", "120"])
+        main()
+
+
+def test_to_old_health_check():
+    """Ensure that the health check"""
+    with tempfile.NamedTemporaryFile() as named_temp_file:
+        file_path = Path(named_temp_file.name)
+
+        old_time = datetime.now() - timedelta(seconds=100)
+        file_path.write_text(old_time.strftime(HeartbeatThread._DATE_FORMAT))
+
+        sys.argv.extend(["check-heartbeat", "--file", str(file_path), "--delta", "10"])
+        with pytest.raises(KeyError):
+            main()
+
+
+def test_no_file_health_check():
+    """Ensure that the health check"""
+    sys.argv.extend(["check-heartbeat", "--file", "/some/file", "--delta", "10"])
+    with pytest.raises(FileNotFoundError):
+        main()
