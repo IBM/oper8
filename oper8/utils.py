@@ -26,6 +26,8 @@ log = alog.use_channel("OPUTL")
 # Forward declaration for Session
 SESSION_TYPE = "Session"
 
+# Sentinel for missing dict values
+__MISSING__ = "__MISSING__"
 
 ## Dicts #######################################################################
 
@@ -100,8 +102,8 @@ def nested_get(dct: dict, key: str, dflt=None) -> Any:
     """
     parts = key.split(constants.NESTED_DICT_DELIM)
     for i, part in enumerate(parts[:-1]):
-        dct = dct.get(part, None)
-        if not dct:
+        dct = dct.get(part, __MISSING__)
+        if dct is __MISSING__:
             return dflt
         if not isinstance(dct, dict):
             raise TypeError(
