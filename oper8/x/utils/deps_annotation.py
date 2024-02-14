@@ -270,17 +270,13 @@ def _find_pod_data_deps(pod: dict) -> dict:
             value_from = env_var.get("valueFrom", {})
             if value_from:
                 # Secret reference
-                secret_name = (
-                    value_from.get("secretKeyRef", {}).get("name")
-                )
+                secret_name = value_from.get("secretKeyRef", {}).get("name")
                 if secret_name:
                     log.debug2("Found Secret env dependency: %s", secret_name)
                     deps_map.setdefault("Secret", set()).add(secret_name)
 
                 # ConfigMap reference
-                cm_name = (
-                    value_from.get("configMapKeyRef", {}).get("name")
-                )
+                cm_name = value_from.get("configMapKeyRef", {}).get("name")
                 if cm_name:
                     log.debug2("Found ConfigMap env dependency: %s", cm_name)
                     deps_map.setdefault("ConfigMap", set()).add(cm_name)

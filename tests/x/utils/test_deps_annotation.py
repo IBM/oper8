@@ -99,6 +99,25 @@ def make_pod_spec(secret_envs=None, cm_envs=None, secret_vols=None, cm_vols=None
     }
 
 
+def make_pod_empty_value_from_spec():
+    return {
+        "spec": {
+            "containers": [
+                {
+                    "name": "foo",
+                    "image": "foo:latest",
+                    "env": [
+                        {
+                            "name": "FOO",
+                            "valueFrom": None,
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
 def make_pod(name="test-pod", *args, **kwargs):
     return dict(
         kind="Pod",
@@ -304,6 +323,16 @@ def test_add_deps_annotation_external_dep():
     assert (
         pod["metadata"]["annotations"].get(deps_annotation.DEPS_ANNOTATION) is not None
     )
+
+
+def test_add_deps_annotation_empty_value_from():
+    """Test that an empty valueFrom will result in no dependencies"""
+    deployment = make_deployment(pod=make_pod_empty_value_from_spec())
+    session = setup_session()
+    comp = MockComponent(api_objects=[deployment], session=session)
+    comp.render_chart(session)
+    deps_annotation.add_deps_annotation(comp, session, deployment)
+    assert deployment["spec"]["template"].get("metadata") is None
 
 
 #########################
