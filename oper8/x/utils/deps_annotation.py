@@ -267,21 +267,23 @@ def _find_pod_data_deps(pod: dict) -> dict:
     # env
     for container in pod_spec.get("containers", []):
         for env_var in container.get("env", []):
-            # Secret reference
-            secret_name = (
-                env_var.get("valueFrom", {}).get("secretKeyRef", {}).get("name")
-            )
-            if secret_name:
-                log.debug2("Found Secret env dependency: %s", secret_name)
-                deps_map.setdefault("Secret", set()).add(secret_name)
+            value_from = env_var.get("valueFrom", {})
+            if value_from:
+                # Secret reference
+                secret_name = (
+                    value_from.get("secretKeyRef", {}).get("name")
+                )
+                if secret_name:
+                    log.debug2("Found Secret env dependency: %s", secret_name)
+                    deps_map.setdefault("Secret", set()).add(secret_name)
 
-            # ConfigMap reference
-            cm_name = (
-                env_var.get("valueFrom", {}).get("configMapKeyRef", {}).get("name")
-            )
-            if cm_name:
-                log.debug2("Found ConfigMap env dependency: %s", cm_name)
-                deps_map.setdefault("ConfigMap", set()).add(cm_name)
+                # ConfigMap reference
+                cm_name = (
+                    value_from.get("configMapKeyRef", {}).get("name")
+                )
+                if cm_name:
+                    log.debug2("Found ConfigMap env dependency: %s", cm_name)
+                    deps_map.setdefault("ConfigMap", set()).add(cm_name)
 
     # Return the set of named deps types
     return {dep_type: sorted(list(deps)) for dep_type, deps in deps_map.items()}
