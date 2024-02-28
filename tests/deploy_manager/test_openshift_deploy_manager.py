@@ -25,6 +25,7 @@ from oper8.test_helpers.helpers import (
     TEST_NAMESPACE,
     MockedOpenshiftDeployManager,
     configure_logging,
+    library_config,
 )
 from oper8.test_helpers.kub_mock import MockKubClient, mock_kub_client_constructor
 from oper8.utils import merge_configs
@@ -1449,3 +1450,72 @@ def test_in_cluster_config():
         mock_client = MockKubClient()
         with mock.patch("kubernetes.client.ApiClient", return_value=mock_client):
             dm.deploy(make_obj_states(cluster_state))
+
+
+def test_422_fallback_to_put_ok():
+    """Make sure that if enabled, deploy can fall back to using PUT instead of
+    PATCH on a 422 error and that the PUT can succeed if valid.
+    """
+    with library_config(deploy_unprocessable_put_fallback=True):
+
+        def fail_patch_only(method, namespace, kind, api_version, name):
+            if method == "PATCH":
+                return ({}, 422)
+            return {
+                "apiVersion": api_version,
+                "kind": kind,
+                "metadata": {
+                    "name": name,
+                    "namespace": namespace,
+                },
+            }
+
+        cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {"bar": fail_patch_only}}}}
+        dm = setup_testable_manager(cluster_state=cluster_state)
+        success, _ = dm.deploy(
+            [
+                {
+                    "apiVersion": "foo.bar.com/v1",
+                    "kind": "Foo",
+                    "metadata": {"name": "bar", "namespace": "test"},
+                    "key": "val",
+                }
+            ]
+        )
+        assert success
+
+
+def test_422_fallback_to_put_invalid():
+    """Make sure that if enabled, deploy can fall back to using PUT instead of
+    PATCH on a 422 error and that the PUT can still produce a 422 if it is truly
+    invalid.
+    """
+    with library_config(deploy_unprocessable_put_fallback=True):
+
+        def fail_put_patch_only(method, namespace, kind, api_version, name):
+            if method in ["PATCH", "PUT"]:
+                return ({}, 422)
+            return {
+                "apiVersion": api_version,
+                "kind": kind,
+                "metadata": {
+                    "name": name,
+                    "namespace": namespace,
+                },
+            }
+
+        cluster_state = {
+            "test": {"Foo": {"foo.bar.com/v1": {"bar": fail_put_patch_only}}}
+        }
+        dm = setup_testable_manager(cluster_state=cluster_state)
+        success, _ = dm.deploy(
+            [
+                {
+                    "apiVersion": "foo.bar.com/v1",
+                    "kind": "Foo",
+                    "metadata": {"name": "bar", "namespace": "test"},
+                    "key": "val",
+                }
+            ]
+        )
+        assert not success

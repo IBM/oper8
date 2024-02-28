@@ -23,23 +23,31 @@ standalone: false
 strict_versioning: false
 supported_versions: []
 
-# Whether to automatically apply oper8 and kubebuilder compatible status updates to
-# custom resources
+# Whether to automatically apply oper8 and kubebuilder compatible status updates
+# to custom resources
 manage_status: true
 
 # Whether or not to apply the internal name annotation to output resources
 internal_name_annotation: true
 
-# Specify a single controller to watch, else an empty string leads to watches for all controllers
+# Specify a single controller to watch, else an empty string leads to watches
+# for all controllers
 controller_name: ""
 
 # Number of times to retry deploying
 deploy_retries: 3
 
+# Allow deployment to fall back from "patch" to "put" if patch fails with a 422.
+# This will solve certain problems where there are mutually exclusive fields
+# (e.g. value / valueFrom in an env entry) that cannot be swapped using "patch."
+# CITE: https://github.com/kubernetes/kubernetes/issues/46861
+deploy_unprocessable_put_fallback: false
+
 # Retry backoff value in seconds
 retry_backoff_base_seconds: 0.01
 
-# Wait duration in seconds until current reconciliation request is re-queued to controller runtime
+# Wait duration in seconds until current reconciliation request is re-queued to
+# controller runtime
 requeue_after_seconds: 60
 
 # Numbers of threads to use for the rollout manager (null for all available)
@@ -78,9 +86,10 @@ python_watch_manager:
   lock:
     # Set different lock types:
     # - leader-for-life: creates single lock using configmap with pod ownerRef
-    # - leader-with-lease: creates reoccurring lock using lease coordination.k8s.io/v1
-    # - annotation: apply lock as CR annotation to support multiple operator's working
-    # on the same CR
+    # - leader-with-lease: creates reoccurring lock using lease
+    #   coordination.k8s.io/v1
+    # - annotation: apply lock as CR annotation to support multiple operator's
+    #   working on the same CR
     # - null/dryrun: disabled
     type: dryrun
 
