@@ -168,6 +168,10 @@ def get_generic_openapi_resource_type(provided_map=None):
     class OpenApiResource:
         attribute_map = provided_map
 
+        @property
+        def property() -> str:
+            return "classproperty"
+
         def __init__(self, **kwargs):
             for k, v in kwargs.items():
                 setattr(self, k, v)
@@ -195,6 +199,7 @@ def test_sanitize_for_serialization_types():
                     "resourceNode": ResourceNode(
                         name="test", manifest={"metadata": {"name": "test"}}
                     ),
+                    "classProperty": get_generic_openapi_resource_type().property,
                     "openapiType": get_generic_openapi_resource_type(
                         {
                             "api_version": "apiVersion",
@@ -222,6 +227,7 @@ def test_sanitize_for_serialization_types():
         "spec": {
             "date": "2020-01-01T00:00:00",
             "list": ["listitem"],
+            "classProperty": "classproperty",
             "openapiType": {
                 "apiVersion": "v1",
                 "kind": "Test",

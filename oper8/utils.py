@@ -140,6 +140,8 @@ def sanitize_for_serialization(obj):  # pylint: disable=too-many-return-statemen
         return obj.isoformat()
     elif isinstance(obj, ResourceNode):
         return sanitize_for_serialization(obj.get_data())
+    elif isinstance(obj, property):
+        return sanitize_for_serialization(obj.fget())
 
     if isinstance(obj, dict):
         obj_dict = obj
