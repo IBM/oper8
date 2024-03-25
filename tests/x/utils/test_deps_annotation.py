@@ -3,6 +3,7 @@ Test the functions for adding the dependency hash annotation
 """
 
 # Standard
+import hashlib
 import shlex
 import subprocess
 import sys
@@ -34,9 +35,12 @@ def make_data_resource(
     data=None,
     metadata=None,
     name="test",
+    namespace=None,
 ):
     """Small helper utility for creading dummy cdk8s secrets"""
     metadata = metadata or {}
+    if namespace:
+        metadata["namespace"] = namespace
     metadata["name"] = name
     kwargs = {"data": data or {}, "metadata": metadata}
     return dict(
@@ -118,11 +122,14 @@ def make_pod_empty_value_from_spec():
     }
 
 
-def make_pod(name="test-pod", *args, **kwargs):
+def make_pod(name="test-pod", namespace=None, *args, **kwargs):
+    metadata = dict(name=name)
+    if namespace:
+        metadata["namespace"] = namespace
     return dict(
         kind="Pod",
         apiVersion="v1",
-        metadata=dict(name=name),
+        metadata=metadata,
         **make_pod_spec(*args, **kwargs),
     )
 
@@ -399,24 +406,36 @@ def test_get_deps_annotation_dict():
     assert hash5 == hash6
 
 
-def test_get_deps_annotation_resource_lookup():
+@pytest.mark.parametrize(
+    ["operand_ns", "data_ns"],
+    [
+        ("test", "test"),
+        ("operand", "data"),
+    ],
+)
+def test_get_deps_annotation_resource_lookup(operand_ns, data_ns):
     """Test that the deps annotation works as expected based on the content of a
-    looked up dependency
+    looked up dependency, including across namespaces
     """
-
-    secret1 = make_secret(name="secret1", metadata={"namespace": "test"})
-    secret2 = make_secret(name="secret2", metadata={"namespace": "test"})
+    secret1 = make_secret(name="secret1", namespace=data_ns)
+    secret2 = make_secret(name="secret2", namespace=data_ns)
     dm = MockDeployManager(resources=[secret1, secret2])
 
-    session = setup_session(deploy_manager=dm)
-    hash1a = deps_annotation.get_deps_annotation(session, [("Secret", "secret1")])
-    hash1b = deps_annotation.get_deps_annotation(session, [("Secret", "secret1")])
-    hash2 = deps_annotation.get_deps_annotation(session, [("Secret", "secret2")])
+    session = setup_session(deploy_manager=dm, namespace=operand_ns)
+    hash1a = deps_annotation.get_deps_annotation(
+        session, [("Secret", "secret1")], namespace=data_ns
+    )
+    hash1b = deps_annotation.get_deps_annotation(
+        session, [("Secret", "secret1")], namespace=data_ns
+    )
+    hash2 = deps_annotation.get_deps_annotation(
+        session, [("Secret", "secret2")], namespace=data_ns
+    )
     hash3 = deps_annotation.get_deps_annotation(
-        session, [("Secret", "secret1"), ("Secret", "secret2")]
+        session, [("Secret", "secret1"), ("Secret", "secret2")], namespace=data_ns
     )
     hash4 = deps_annotation.get_deps_annotation(
-        session, [("Secret", "secret1"), ("Secret", "secret2")]
+        session, [("Secret", "secret1"), ("Secret", "secret2")], namespace=data_ns
     )
 
     # Matching resource

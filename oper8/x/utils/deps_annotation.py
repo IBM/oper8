@@ -11,7 +11,7 @@ is guaranteed to be picked up by the consuming Pod.
 """
 
 # Standard
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 import hashlib
 import json
 
@@ -21,6 +21,7 @@ import alog
 # Local
 from .constants import DEPS_ANNOTATION
 from oper8 import Component, Session
+from oper8.session import _SESSION_NAMESPACE
 from oper8.utils import merge_configs
 
 log = alog.use_channel("DEPS")
@@ -114,6 +115,7 @@ def get_deps_annotation(
     session: Session,
     dependencies: List[Union[dict, Tuple[str, str]]],
     resource_name: str = "",
+    namespace: Optional[str] = _SESSION_NAMESPACE,
 ) -> dict:
     """Get a dict holding an annotation key/value pair representing the unique
     content hash of all given dependencies. This can be used to force pods to
@@ -134,21 +136,27 @@ def get_deps_annotation(
             An ordered list of dependencies to compute the content hash from
         resource_name:  str
             A string name for the resource (used for logging)
+        namespace:  Optional[str]
+            Namespace where the dependencies live. Defaults to session.namespace
 
     Returns:
         deps_annotation:  dict
             A dict representation of the key/value pair used to hold the content
             hash for the given set of dependencies
     """
-
     content_hash = hashlib.sha1()
+    namespace = namespace if namespace != _SESSION_NAMESPACE else session.namespace
     for dep in dependencies:
         # Get the dict representation depending on what type this is
         if isinstance(dep, tuple):
             log.debug3("[%s] Handling tuple dependency: %s", resource_name, dep)
             assert len(dep) == 2, f"Invalid dependency tuple given: {dep}"
             kind, name = dep
-            success, dep_dict = session.get_object_current_state(name=name, kind=kind)
+            success, dep_dict = session.get_object_current_state(
+                name=name,
+                kind=kind,
+                namespace=namespace,
+            )
             assert success, f"Failed to fetch current state of {kind}/{name}"
 
             # There are several reasons that the upstream dependency would not
@@ -184,7 +192,7 @@ def get_deps_annotation(
                     kind,
                     name,
                 )
-                dep_dict = {}
+                continue
         else:
             log.debug3(
                 "[%s] Handling dict dependency: %s",
