@@ -21,6 +21,7 @@ import alog
 # Local
 from .constants import DEPS_ANNOTATION
 from oper8 import Component, Session
+from oper8.session import _SESSION_NAMESPACE
 from oper8.utils import merge_configs
 
 log = alog.use_channel("DEPS")
@@ -114,7 +115,7 @@ def get_deps_annotation(
     session: Session,
     dependencies: List[Union[dict, Tuple[str, str]]],
     resource_name: str = "",
-    namespace: Optional[str] = None,
+    namespace: Optional[str] = _SESSION_NAMESPACE,
 ) -> dict:
     """Get a dict holding an annotation key/value pair representing the unique
     content hash of all given dependencies. This can be used to force pods to
@@ -144,7 +145,7 @@ def get_deps_annotation(
             hash for the given set of dependencies
     """
     content_hash = hashlib.sha1()
-    namespace = namespace or session.namespace
+    namespace = namespace if namespace != _SESSION_NAMESPACE else session.namespace
     for dep in dependencies:
         # Get the dict representation depending on what type this is
         if isinstance(dep, tuple):
