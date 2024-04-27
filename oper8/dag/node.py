@@ -151,7 +151,7 @@ class ResourceNode(Node):
     def manifest(self) -> str:
         """The resource manifest"""
         return self.get_data()[0]
-    
+
     def add_dependency(self, node: "ResourceNode"):
         """Add a child dependency to this node"""
         self.add_child(node)

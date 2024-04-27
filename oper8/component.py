@@ -2,21 +2,21 @@
 Component base class for building larger abstractions off of
 """
 
-import abc
-import os
 # Standard
 from typing import Any, List, Optional, Tuple
+import abc
+import os
+
+# Third Party
+import yaml
 
 # First Party
 import aconfig
 import alog
-# Third Party
-import yaml
 
 # Local
 from . import config
-from .constants import (INTERNAL_NAME_ANOTATION_NAME,
-                        TEMPORARY_PATCHES_ANNOTATION_NAME)
+from .constants import INTERNAL_NAME_ANOTATION_NAME, TEMPORARY_PATCHES_ANNOTATION_NAME
 from .dag import Graph, Node, ResourceNode
 from .exceptions import assert_cluster
 from .managed_object import ManagedObject
@@ -386,7 +386,7 @@ class Component(Node, abc.ABC):
                 session=session,
                 is_subsystem=is_subsystem,
                 namespace=resource.namespace,
-                verify_function=resource.verify_function
+                verify_function=resource.verify_function,
             ):
                 log.debug("[%s/%s] not verified", resource.kind, resource.name)
                 return False

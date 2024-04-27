@@ -206,6 +206,36 @@ def test_add_namespace():
     assert objs[0].metadata.namespace == "unique"
 
 
+def test_custom_resource_verify():
+    """Make sure that a user  can override the verify function for a particular resource."""
+    session = setup_session()
+    bar = {"kind": "Foo", "apiVersion": "v1", "metadata": {"name": "bar"}}
+
+    class TestSuccessVerify(Component):
+        name = "bar"
+
+        def build_chart(self, session):
+            self.add_resource("bar", bar)
+
+    class TestFailedVerify(Component):
+        name = "bar_fail"
+
+        def build_chart(self, session):
+            self.add_resource("bar", bar, lambda resource: False)
+
+    suc_comp = TestSuccessVerify(session=session)
+    failed_comp = TestFailedVerify(session=session)
+
+    with library_config(internal_name_annotation=True):
+        suc_comp.render_chart(session)
+        suc_comp.deploy(session)
+        assert suc_comp.verify(session)
+
+        failed_comp.render_chart(session)
+        failed_comp.deploy(session)
+        assert not failed_comp.verify(session)
+
+
 def test_internal_name_annotation():
     """Make sure the internal name annotation is added to output resources if
     configured

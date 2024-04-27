@@ -2,10 +2,10 @@
 This module holds the core session state for an individual reconciliation
 """
 
-import hashlib
 # Standard
 from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
+import hashlib
 
 # First Party
 import aconfig

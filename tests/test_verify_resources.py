@@ -166,6 +166,15 @@ def test_verify_pod_null_namespace():
     )
 
 
+def test_verify_pod_custom_verification():
+    """Make sure a ready pod fails to verify with a custom override"""
+    assert not run_test_verify(
+        kind="Pod",
+        conditions=[make_condition("Ready", True)],
+        verify_function=lambda resource: False,
+    )
+
+
 #################
 ## Deployments ##
 #################

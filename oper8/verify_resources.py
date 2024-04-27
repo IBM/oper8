@@ -8,10 +8,11 @@ from datetime import datetime
 from functools import partial
 from typing import Callable, List, Optional
 
-# First Party
-import alog
 # Third Party
 import dateutil.parser
+
+# First Party
+import alog
 
 # Local
 from . import status
