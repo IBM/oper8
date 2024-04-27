@@ -2,10 +2,10 @@
 This module holds the core session state for an individual reconciliation
 """
 
+import hashlib
 # Standard
 from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
-import hashlib
 
 # First Party
 import aconfig
@@ -26,10 +26,10 @@ HASH_CHARSET = "0123456789abcdef"
 # Maximum length for a kubernetes name
 MAX_NAME_LEN = 63
 
-# Type definition for the signature of a verify function
+# Type definition for the signature of a component verify function
 # NOTE: I'm not sure why pylint dislikes this name. In my view, this is a shared
 #   global which should have all-caps casing.
-VERIFY_FUNCTION = Callable[["Session"], bool]  # pylint: disable=invalid-name
+COMPONENT_VERIFY_FUNCTION = Callable[["Session"], bool]  # pylint: disable=invalid-name
 
 # Helper Definition to define when a session should use its own namespace
 # or the one passed in as an argument
@@ -232,7 +232,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
         self,
         component: Union[str, COMPONENT_INSTANCE_TYPE],
         upstream_component: Union[str, COMPONENT_INSTANCE_TYPE],
-        verify_function: Optional[VERIFY_FUNCTION] = None,
+        verify_function: Optional[COMPONENT_VERIFY_FUNCTION] = None,
     ):
         """Add a dependency indicating that one component requires an upstream
         component to be deployed before it can be deployed.
@@ -338,7 +338,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
     def get_component_dependencies(
         self,
         component: Union[str, COMPONENT_INSTANCE_TYPE],
-    ) -> List[Tuple[COMPONENT_INSTANCE_TYPE, Optional[VERIFY_FUNCTION]]]:
+    ) -> List[Tuple[COMPONENT_INSTANCE_TYPE, Optional[COMPONENT_VERIFY_FUNCTION]]]:
         """Get the list of (upstream_name, verify_function) tuples for a given
         component.
 
