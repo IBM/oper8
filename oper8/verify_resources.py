@@ -141,6 +141,12 @@ def verify_pod(object_state: dict) -> bool:
     return _verify_condition(object_state, "Ready", True)
 
 
+def verify_job(object_state: dict) -> bool:
+    """Verify that a job has completed successfully"""
+    # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/#JobStatus
+    return _verify_condition(object_state, "Completed", True)
+
+
 def verify_deployment(object_state: dict) -> bool:
     """Verify that all members of a deployment are ready
     and all members are rolled out to new version in case of update.
@@ -193,6 +199,7 @@ def verify_subsystem(object_state: dict, desired_version: str = None) -> bool:
 
 _resource_verifiers = {
     "Pod": verify_pod,
+    "Job": verify_job,
     "Deployment": verify_deployment,
     "StatefulSet": verify_statefulset,
 }

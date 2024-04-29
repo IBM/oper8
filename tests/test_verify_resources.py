@@ -12,19 +12,13 @@ import alog
 # Local
 from oper8 import status
 from oper8.session import _SESSION_NAMESPACE
-from oper8.test_helpers.helpers import (
-    MockDeployManager,
-    configure_logging,
-    setup_session,
-)
+from oper8.test_helpers.helpers import (MockDeployManager, configure_logging,
+                                        setup_session)
 from oper8.utils import nested_set
-from oper8.verify_resources import (
-    AVAILABLE_CONDITION_KEY,
-    DEFAULT_TIMESTAMP_KEY,
-    NEW_RS_AVAILABLE_REASON,
-    PROGRESSING_CONDITION_KEY,
-    verify_resource,
-)
+from oper8.verify_resources import (AVAILABLE_CONDITION_KEY,
+                                    DEFAULT_TIMESTAMP_KEY,
+                                    NEW_RS_AVAILABLE_REASON,
+                                    PROGRESSING_CONDITION_KEY, verify_resource)
 
 configure_logging()
 log = alog.use_channel("TEST")
@@ -172,6 +166,63 @@ def test_verify_pod_custom_verification():
         kind="Pod",
         conditions=[make_condition("Ready", True)],
         verify_function=lambda resource: False,
+    )
+
+
+##########
+## Jobs ##
+##########
+
+
+def test_verify_job_completed():
+    """Make sure a completed job verifies cleanly"""
+    assert run_test_verify(kind="Job", conditions=[make_condition("Completed", True)])
+
+
+def test_verify_job_failed():
+    """Make sure a failed job returns as unverified"""
+    assert not run_test_verify(kind="Job", conditions=[make_condition("Failed", True)])
+
+
+def test_verify_job_suspended():
+    """Make sure a suspended job returns as unverified"""
+    assert not run_test_verify(
+        kind="Job", conditions=[make_condition("Suspended", True)]
+    )
+
+
+def test_verify_job_missing():
+    """Make sure a missing job returns as unverified"""
+    assert not run_test_verify(kind="Job", populate_state=None)
+
+
+def test_verify_job_no_conditions():
+    """Make sure a job with no conditions returns as unverified"""
+    assert not run_test_verify(kind="Job", conditions=[])
+
+
+def test_verify_job_no_status():
+    """Make sure a job with no status returns as unverified"""
+    assert not run_test_verify(kind="Job", conditions=None)
+
+
+def test_verify_job_separate_namespace():
+    """Make sure a completed job from a different namespace verifies cleanly"""
+    assert run_test_verify(
+        kind="Job",
+        conditions=[make_condition("Completed", True)],
+        obj_namespace="adifferent",
+        search_namespace="adifferent",
+    )
+
+
+def test_verify_job_null_namespace():
+    """Make sure a completed job in the same namespace verifies cleanly"""
+    assert run_test_verify(
+        kind="Job",
+        conditions=[make_condition("Completed", True)],
+        obj_namespace=TEST_NAMESPACE,
+        search_namespace=_SESSION_NAMESPACE,
     )
 
 
