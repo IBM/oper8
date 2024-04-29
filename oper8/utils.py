@@ -139,7 +139,7 @@ def sanitize_for_serialization(obj):  # pylint: disable=too-many-return-statemen
     elif isinstance(obj, (datetime.datetime, datetime.date)):
         return obj.isoformat()
     elif isinstance(obj, ResourceNode):
-        return sanitize_for_serialization(obj.get_data())
+        return sanitize_for_serialization(obj.manifest)
     elif isinstance(obj, property):
         return sanitize_for_serialization(obj.fget())
 
