@@ -12,13 +12,19 @@ import alog
 # Local
 from oper8 import status
 from oper8.session import _SESSION_NAMESPACE
-from oper8.test_helpers.helpers import (MockDeployManager, configure_logging,
-                                        setup_session)
+from oper8.test_helpers.helpers import (
+    MockDeployManager,
+    configure_logging,
+    setup_session,
+)
 from oper8.utils import nested_set
-from oper8.verify_resources import (AVAILABLE_CONDITION_KEY,
-                                    DEFAULT_TIMESTAMP_KEY,
-                                    NEW_RS_AVAILABLE_REASON,
-                                    PROGRESSING_CONDITION_KEY, verify_resource)
+from oper8.verify_resources import (
+    AVAILABLE_CONDITION_KEY,
+    DEFAULT_TIMESTAMP_KEY,
+    NEW_RS_AVAILABLE_REASON,
+    PROGRESSING_CONDITION_KEY,
+    verify_resource,
+)
 
 configure_logging()
 log = alog.use_channel("TEST")
