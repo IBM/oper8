@@ -2,7 +2,7 @@
 This module contains a collection of classes for implementing nodes of a Graph
 """
 # Standard
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional
 
 
 class Node:
@@ -114,11 +114,15 @@ class Node:
 
 
 class ResourceNode(Node):
-    """Class for representing a kubernetes resource in the Graph"""
+    """Class for representing a kubernetes resource in the Graph with
+    a function for verifying said resource"""
 
-    def __init__(self, name: str, manifest: dict):
+    def __init__(
+        self, name: str, manifest: dict, verify_func: Optional[Callable] = None
+    ):
         # Override init to require name/manifest parameters
         super().__init__(name, manifest)
+        self._verify_function = verify_func
 
     ## ApiObject Parameters and Functions ######################################
     @property
@@ -129,22 +133,32 @@ class ResourceNode(Node):
     @property
     def api_version(self) -> str:
         """The full kubernetes apiVersion"""
-        return self.get_data().get("apiVersion")
+        return self.manifest.get("apiVersion")
 
     @property
     def kind(self) -> str:
         """The resource kind"""
-        return self.get_data().get("kind")
+        return self.manifest.get("kind")
 
     @property
     def metadata(self) -> dict:
         """The full resource metadata dict"""
-        return self.get_data().get("metadata", {})
+        return self.manifest.get("metadata", {})
 
     @property
     def name(self) -> str:
         """The resource metadata.name"""
         return self.metadata.get("name")
+
+    @property
+    def manifest(self) -> dict:
+        """The resource manifest"""
+        return self.get_data()
+
+    @property
+    def verify_function(self) -> Optional[Callable]:
+        """The resource manifest"""
+        return self._verify_function
 
     def add_dependency(self, node: "ResourceNode"):
         """Add a child dependency to this node"""

@@ -21,9 +21,9 @@ from .dag import Graph, Node, ResourceNode
 from .exceptions import assert_cluster
 from .managed_object import ManagedObject
 from .patch import apply_patches
-from .session import VERIFY_FUNCTION, Session
+from .session import COMPONENT_VERIFY_FUNCTION, Session
 from .utils import abstractclassproperty, sanitize_for_serialization
-from .verify_resources import verify_resource
+from .verify_resources import RESOURCE_VERIFY_FUNCTION, verify_resource
 
 log = alog.use_channel("COMP-BASE")
 
@@ -232,6 +232,7 @@ class Component(Node, abc.ABC):
         self,
         name: str,  # pylint: disable=redefined-builtin
         obj: Any,
+        verify_function: Optional[RESOURCE_VERIFY_FUNCTION] = None,
     ) -> Optional[
         ResourceNode
     ]:  # pylint: disable=unused-argument, redefined-builtin, invalid-name
@@ -251,7 +252,7 @@ class Component(Node, abc.ABC):
         # Add namespace to obj if not present
         obj.setdefault("metadata", {}).setdefault("namespace", self.session_namespace)
 
-        node = ResourceNode(name, obj)
+        node = ResourceNode(name, obj, verify_function)
         self.graph.add_node(node)
         return node
 
@@ -259,7 +260,7 @@ class Component(Node, abc.ABC):
         self,
         session: Session,
         *components: "Component",
-        verify_function: Optional[VERIFY_FUNCTION] = None,
+        verify_function: Optional[COMPONENT_VERIFY_FUNCTION] = None,
     ):
         """This add_dependency function sets up a dependency between this component
         and a list of other components. To add a dependency between resources inside
@@ -385,6 +386,7 @@ class Component(Node, abc.ABC):
                 session=session,
                 is_subsystem=is_subsystem,
                 namespace=resource.namespace,
+                verify_function=resource.verify_function,
             ):
                 log.debug("[%s/%s] not verified", resource.kind, resource.name)
                 return False
@@ -468,7 +470,7 @@ class Component(Node, abc.ABC):
         # Iterate all ApiObject children in dependency order and perform the
         # rendering, including patches and backend modifications.
         self._managed_objects = []
-        for name, obj in resource_list:
+        for name, obj, verify_func in resource_list:
             # Apply any patches to this object
             log.debug2("Applying patches to managed object: %s", name)
             log.debug4("Before Patching: %s", obj)
@@ -495,7 +497,7 @@ class Component(Node, abc.ABC):
             obj = self.update_object_definition(session, name, obj)
 
             # Add the resource to the set managed by the is component
-            managed_obj = ManagedObject(obj)
+            managed_obj = ManagedObject(obj, verify_func)
             log.debug2("Adding managed object: %s", managed_obj)
             log.debug4("Final Definition: %s", obj)
             self._managed_objects.append(managed_obj)
@@ -521,7 +523,6 @@ class Component(Node, abc.ABC):
         for child in children:
             # Construct the managed object with its internal name
             child_name = ".".join([self.name, child.get_name()])
-            child_obj = child.get_data()
-            resource_list.append((child_name, child_obj))
+            resource_list.append((child_name, child.manifest, child.verify_function))
 
         return resource_list

@@ -6,7 +6,7 @@ resources.
 # Standard
 from datetime import datetime
 from functools import partial
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 # Third Party
 import dateutil.parser
@@ -27,6 +27,12 @@ AVAILABLE_CONDITION_KEY = "Available"
 PROGRESSING_CONDITION_KEY = "Progressing"
 NEW_RS_AVAILABLE_REASON = "NewReplicaSetAvailable"
 
+# Type definition for the signature of a resource verify function
+# NOTE: I'm not sure why pylint dislikes this name. In my view, this is a shared
+#   global which should have all-caps casing.
+RESOURCE_VERIFY_FUNCTION = Callable[[dict], bool]  # pylint: disable=invalid-name
+
+
 ## Main Functions ##############################################################
 
 
@@ -39,9 +45,10 @@ def verify_resource(
     # Use a predfined _SESSION_NAMESPACE default instead of None to differentiate between
     # nonnamespaced resources (which pass None) and those that use session.namespace
     namespace: Optional[str] = _SESSION_NAMESPACE,
+    verify_function: Optional[RESOURCE_VERIFY_FUNCTION] = None,
     is_subsystem: bool = False,
-    condition_type: str = None,
-    timestamp_key: str = None,
+    condition_type: Optional[str] = None,
+    timestamp_key: Optional[str] = None,
 ) -> bool:
     """Verify a resource detailed in a ManagedObject.
 
@@ -107,7 +114,7 @@ def verify_resource(
         )
 
     # Run the appropriate verification function if there is one available
-    verify_fn = _resource_verifiers.get(kind)
+    verify_fn = verify_function or _resource_verifiers.get(kind)
     if not verify_fn and is_subsystem:
         log.debug("Using oper8 subsystem verifier for [%s/%s]", kind, name)
         verify_fn = partial(
