@@ -45,10 +45,10 @@ def verify_resource(
     # Use a predfined _SESSION_NAMESPACE default instead of None to differentiate between
     # nonnamespaced resources (which pass None) and those that use session.namespace
     namespace: Optional[str] = _SESSION_NAMESPACE,
-    verify_function: RESOURCE_VERIFY_FUNCTION = None,
+    verify_function: Optional[RESOURCE_VERIFY_FUNCTION] = None,
     is_subsystem: bool = False,
-    condition_type: str = None,
-    timestamp_key: str = None,
+    condition_type: Optional[str] = None,
+    timestamp_key: Optional[str] = None,
 ) -> bool:
     """Verify a resource detailed in a ManagedObject.
 
