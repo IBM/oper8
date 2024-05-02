@@ -151,12 +151,12 @@ class ResourceNode(Node):
         return self.metadata.get("name")
 
     @property
-    def manifest(self) -> str:
+    def manifest(self) -> dict:
         """The resource manifest"""
         return self.get_data()
 
     @property
-    def verify_function(self) -> str:
+    def verify_function(self) -> Optional[Callable]:
         """The resource manifest"""
         return self._verify_function
 
