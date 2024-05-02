@@ -289,9 +289,3 @@ def _check_condition(
         return obj_reason == expected_reason
 
     return is_expected_status() and is_expected_reason()
-    return is_expected_status() and is_expected_reason()
-
-    return is_expected_status() and is_expected_reason()
-    return is_expected_status() and is_expected_reason()
-    return is_expected_status() and is_expected_reason()
-    return is_expected_status() and is_expected_reason()

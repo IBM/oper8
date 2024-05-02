@@ -117,7 +117,9 @@ class ResourceNode(Node):
     """Class for representing a kubernetes resource in the Graph with
     a function for verifying said resource"""
 
-    def __init__(self, name: str, manifest: dict, verify_func: Callable = None):
+    def __init__(
+        self, name: str, manifest: dict, verify_func: Optional[Callable] = None
+    ):
         # Override init to require name/manifest parameters
         super().__init__(name, manifest)
         self._verify_function = verify_func

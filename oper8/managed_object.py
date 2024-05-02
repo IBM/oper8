@@ -2,7 +2,7 @@
 Helper object to represent a kubernetes object that is managed by the operator
 """
 # Standard
-from typing import Callable
+from typing import Callable, Optional
 import uuid
 
 KUBE_LIST_IDENTIFIER = "List"
@@ -11,7 +11,7 @@ KUBE_LIST_IDENTIFIER = "List"
 class ManagedObject:  # pylint: disable=too-many-instance-attributes
     """Basic struct to represent a managed kubernetes object"""
 
-    def __init__(self, definition: dict, verify_function: Callable = None):
+    def __init__(self, definition: dict, verify_function: Optional[Callable] = None):
         self.kind = definition.get("kind")
         self.metadata = definition.get("metadata", {})
         self.name = self.metadata.get("name")
