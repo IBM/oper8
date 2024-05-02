@@ -523,7 +523,6 @@ class Component(Node, abc.ABC):
         for child in children:
             # Construct the managed object with its internal name
             child_name = ".".join([self.name, child.get_name()])
-            child_obj, verify_func = child.get_data()
-            resource_list.append((child_name, child_obj, verify_func))
+            resource_list.append((child_name, child.manifest, child.verify_function))
 
         return resource_list

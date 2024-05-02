@@ -119,7 +119,8 @@ class ResourceNode(Node):
 
     def __init__(self, name: str, manifest: dict, verify_func: Callable = None):
         # Override init to require name/manifest parameters
-        super().__init__(name, (manifest, verify_func))
+        super().__init__(name, manifest)
+        self._verify_function = verify_func
 
     ## ApiObject Parameters and Functions ######################################
     @property
@@ -150,7 +151,12 @@ class ResourceNode(Node):
     @property
     def manifest(self) -> str:
         """The resource manifest"""
-        return self.get_data()[0]
+        return self.get_data()
+
+    @property
+    def verify_function(self) -> str:
+        """The resource manifest"""
+        return self._verify_function
 
     def add_dependency(self, node: "ResourceNode"):
         """Add a child dependency to this node"""
