@@ -21,7 +21,8 @@ dependencies = [
     "jsonpatch>=1.26,<2",
     "semver>=2.13.0,<4",
     "kubernetes>=25.3.0,<29",
-    "pygit2>=1.12.0,<2",
+    # Until https://github.com/libgit2/pygit2/issues/1292 is resolved
+    "pygit2>=1.12.0,<1.15",
 ]
 
 [project.scripts]
