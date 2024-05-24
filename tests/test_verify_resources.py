@@ -20,6 +20,7 @@ from oper8.test_helpers.helpers import (
 from oper8.utils import nested_set
 from oper8.verify_resources import (
     AVAILABLE_CONDITION_KEY,
+    COMPLETE_CONDITION_KEY,
     DEFAULT_TIMESTAMP_KEY,
     NEW_RS_AVAILABLE_REASON,
     PROGRESSING_CONDITION_KEY,
@@ -182,7 +183,9 @@ def test_verify_pod_custom_verification():
 
 def test_verify_job_completed():
     """Make sure a completed job verifies cleanly"""
-    assert run_test_verify(kind="Job", conditions=[make_condition("Completed", True)])
+    assert run_test_verify(
+        kind="Job", conditions=[make_condition(COMPLETE_CONDITION_KEY, True)]
+    )
 
 
 def test_verify_job_failed():
@@ -216,7 +219,7 @@ def test_verify_job_separate_namespace():
     """Make sure a completed job from a different namespace verifies cleanly"""
     assert run_test_verify(
         kind="Job",
-        conditions=[make_condition("Completed", True)],
+        conditions=[make_condition(COMPLETE_CONDITION_KEY, True)],
         obj_namespace="adifferent",
         search_namespace="adifferent",
     )
@@ -226,7 +229,7 @@ def test_verify_job_null_namespace():
     """Make sure a completed job in the same namespace verifies cleanly"""
     assert run_test_verify(
         kind="Job",
-        conditions=[make_condition("Completed", True)],
+        conditions=[make_condition(COMPLETE_CONDITION_KEY, True)],
         obj_namespace=TEST_NAMESPACE,
         search_namespace=_SESSION_NAMESPACE,
     )
