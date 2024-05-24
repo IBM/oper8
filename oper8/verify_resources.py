@@ -24,6 +24,7 @@ log = alog.use_channel("VERFY")
 
 DEFAULT_TIMESTAMP_KEY = "lastTransitionTime"
 AVAILABLE_CONDITION_KEY = "Available"
+COMPLETE_CONDITION_KEY = "Complete"
 PROGRESSING_CONDITION_KEY = "Progressing"
 NEW_RS_AVAILABLE_REASON = "NewReplicaSetAvailable"
 
@@ -144,7 +145,7 @@ def verify_pod(object_state: dict) -> bool:
 def verify_job(object_state: dict) -> bool:
     """Verify that a job has completed successfully"""
     # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/#JobStatus
-    return _verify_condition(object_state, "Completed", True)
+    return _verify_condition(object_state, COMPLETE_CONDITION_KEY, True)
 
 
 def verify_deployment(object_state: dict) -> bool:
