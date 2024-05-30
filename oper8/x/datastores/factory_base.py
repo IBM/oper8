@@ -6,7 +6,6 @@ constructing named singleton instances of a given datastore type.
 
 # Standard
 from typing import Optional
-import abc
 
 # First Party
 import alog
@@ -35,7 +34,7 @@ class classproperty:
         return self.func.__get__(*args)()
 
 
-class DatastoreSingletonFactoryBase(abc.ABC):
+class DatastoreSingletonFactoryBase:
     """The DatastoreSingletonFactoryBase manages instances of all datastore
     types as singletons on a per-deployment basis. It provides functionality for
     derived classes to define a specific DATASTORE_TYPE (e.g. redis) and

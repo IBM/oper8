@@ -157,9 +157,7 @@ class InternalTlsContext(ITlsContext):
 
         assert (
             cache_key in self._server_pairs
-        ), "Trying to obtain certificate %s which was not previouly requested" % (
-            key_name
-        )
+        ), f"Trying to obtain certificate {key_name} which was not previouly requested"
         if existing_key_pem is not None and existing_cert_pem is not None:
             key_pem = existing_key_pem
             cert_pem = existing_cert_pem
