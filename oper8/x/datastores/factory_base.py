@@ -127,6 +127,8 @@ class DatastoreSingletonFactoryBase:
             name:  Optional[str]
                 The name of the singleton instance to get. If not provided, a
                 top-level instance is used
+            allow_from_component:  bool
+                If True, use connection info from the component
 
         Returns:
             connection:  DatastoreConnectionBase
