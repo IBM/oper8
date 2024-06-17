@@ -110,7 +110,10 @@ class DatastoreSingletonFactoryBase:
 
     @classmethod
     def get_connection(
-        cls, session: Session, name: Optional[str] = None
+        cls,
+        session: Session,
+        name: Optional[str] = None,
+        allow_from_component: bool = True,
     ) -> DatastoreConnectionBase:
         """Get the connection details for a named instance of the datastore type
 
@@ -124,12 +127,14 @@ class DatastoreSingletonFactoryBase:
             name:  Optional[str]
                 The name of the singleton instance to get. If not provided, a
                 top-level instance is used
+            allow_from_component:  bool
+                If True, use connection info from the component
 
         Returns:
             connection:  DatastoreConnectionBase
                 The connection for this instance
         """
-        return cls._get_connection(session, name)
+        return cls._get_connection(session, name, allow_from_component)
 
     @classmethod
     def register_type(cls, type_class: Datastore):
