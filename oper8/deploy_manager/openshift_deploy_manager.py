@@ -946,4 +946,3 @@ class OpenshiftDeployManager(DeployManagerBase):
                 changed = True
 
             return changed
-            return changed
