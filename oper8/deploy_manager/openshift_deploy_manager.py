@@ -743,20 +743,33 @@ class OpenshiftDeployManager(DeployManagerBase):
                 field_manager="oper8",
             ).to_dict()
         except ConflictError:
-            log.debug(
-                "Overriding field manager conflict for [%s/%s/%s] in %s ",
-                api_version,
-                kind,
-                name,
-                namespace,
-            )
-            return resource_handle.server_side_apply(
-                resource_definition,
-                name=name,
-                namespace=namespace,
-                field_manager="oper8",
-                force_conflicts=True,
-            ).to_dict()
+            try:
+                log.debug(
+                    "Overriding field manager conflict for [%s/%s/%s] in %s ",
+                    api_version,
+                    kind,
+                    name,
+                    namespace,
+                )
+                return resource_handle.server_side_apply(
+                    resource_definition,
+                    name=name,
+                    namespace=namespace,
+                    field_manager="oper8",
+                    force_conflicts=True,
+                ).to_dict()
+            except UnprocessibleEntityError as err:
+                log.debug3("Caught 422 error: %s", err, exc_info=True)
+                if config.deploy_unprocessable_put_fallback:
+                    log.debug("Falling back to PUT on 422: %s", err)
+                    return resource_handle.replace(
+                        resource_definition,
+                        name=name,
+                        namespace=namespace,
+                        field_manager="oper8",
+                    ).to_dict()
+                else:
+                    raise
         except UnprocessibleEntityError as err:
             log.debug3("Caught 422 error: %s", err, exc_info=True)
             if config.deploy_unprocessable_put_fallback:

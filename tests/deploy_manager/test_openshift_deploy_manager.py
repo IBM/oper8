@@ -9,6 +9,7 @@ from unittest import mock
 import time
 
 # Third Party
+from openshift.dynamic.exceptions import UnprocessibleEntityError
 import pytest
 
 # First Party
@@ -247,6 +248,51 @@ def test_deploy_conflict_retry_resolve_count():
     success, changed = dm.deploy(make_obj_states(cluster_state))
     assert success
     assert changed
+
+
+@pytest.mark.parametrize("enable_fallback", [True, False])
+def test_deploy_conflict_unprocessible_retry_resolve_count(enable_fallback):
+    """Make sure that trying to deploy and encountering a 409 conflict error the
+    first time, then encountering a 422 falls back to using PUT and resolves
+    """
+
+    class ConflictUnprocessiblePatch:
+        def __init__(self):
+            self._count = 0
+
+        def __call__(self, method, namespace, kind, api_version, name):
+            log.debug(
+                "Handling call with method [%s] for [%s/%s/%s/%s]",
+                method,
+                namespace,
+                api_version,
+                kind,
+                name,
+            )
+            res = {
+                "metadata": {
+                    "resourceVersion": self._count,
+                }
+            }
+            if method == "PATCH":
+                if self._count < 1:
+                    log.debug("Returning 409")
+                    res = ({}, 409)
+                else:
+                    log.debug("Returning 422")
+                    res = ({}, 422)
+                self._count += 1
+            return res
+
+    with library_config(deploy_unprocessable_put_fallback=enable_fallback):
+        cluster_state = {
+            "test": {"Foo": {"foo.bar.com/v1": {"bar": ConflictUnprocessiblePatch()}}}
+        }
+        dm = setup_testable_manager(cluster_state=cluster_state)
+        cluster_state = {
+            "test": {"Foo": {"foo.bar.com/v1": {"bar": {"some": "content"}}}}
+        }
+        assert dm.deploy(make_obj_states(cluster_state))[0] is enable_fallback
 
 
 def test_deploy_conflict_retry_resolve_time():
