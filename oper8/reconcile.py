@@ -1001,7 +1001,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         return status.update_resource_status(
             deploy_manager,
             manifest.kind,
-            manifest.api_version,
+            manifest.apiVersion,
             manifest.metadata.name,
             manifest.metadata.namespace,
             **kwargs,

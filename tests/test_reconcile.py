@@ -1098,14 +1098,15 @@ def test_get_temp_patches(cr_manifest, patches, exception):
 def test_update_resource_status():
     """Test updating resource status"""
     dm = MockDeployManager()
-    cr = setup_cr()
+    the_api_version = "my.api/v123alpha0"
+    cr = setup_cr(api_version=the_api_version)
     rm = ReconcileManager(deploy_manager=dm)
     with mock.patch("oper8.status.update_resource_status") as Mock:
         rm._update_resource_status(dm, cr, current_status={"test": "status"})
         Mock.assert_called_with(
             dm,
             cr.kind,
-            cr.api_version,
+            the_api_version,
             cr.metadata.name,
             cr.metadata.namespace,
             current_status={"test": "status"},
