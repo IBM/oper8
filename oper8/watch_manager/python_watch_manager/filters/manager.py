@@ -256,10 +256,7 @@ class FilterManager(Filter):
         """
 
         # Directly check tuple to ignore NamedTuples and subclasses
-        if not (
-            isinstance(filters, list)
-            or type(filters) == tuple  # pylint: disable=unidiomatic-typecheck
-        ):
+        if not (isinstance(filters, list) or type(filters) is tuple):
             return operation(filters)
 
         filter_list = []
