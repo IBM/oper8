@@ -141,10 +141,7 @@ class MockWatchStreamResponse:
         if self.shutdown.is_set():
             return True
 
-        if end_time < datetime.now():
-            return True
-
-        return False
+        return end_time < datetime.now()
 
     def _make_watch_response(self, event, object):
         # Add new line to watch response
