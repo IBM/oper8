@@ -3,7 +3,7 @@ Component base class for building larger abstractions off of
 """
 
 # Standard
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 import abc
 import os
 
@@ -18,6 +18,7 @@ import alog
 from . import config
 from .constants import INTERNAL_NAME_ANOTATION_NAME, TEMPORARY_PATCHES_ANNOTATION_NAME
 from .dag import Graph, Node, ResourceNode
+from .deploy_manager import DeployMethod
 from .exceptions import assert_cluster
 from .managed_object import ManagedObject
 from .patch import apply_patches
@@ -189,12 +190,14 @@ class Component(Node, abc.ABC):
         ), "Cannot call deploy() before render_chart()"
 
         # Deploy all managed objects
-        success, _ = session.deploy_manager.deploy(
-            [obj.definition for obj in self._managed_objects]
-        )
-        if not success:
-            log.warning("Failed to deploy [%s]", self)
-            return False
+        for obj in self.managed_objects:
+            success, _ = session.deploy_manager.deploy(
+                resource_definitions=[obj.definition],
+                method=obj.deploy_method or DeployMethod.DEFAULT,
+            )
+            if not success:
+                log.warning("Failed to deploy [%s]", self)
+                return False
         return True
 
     def disable(self, session):
@@ -233,6 +236,7 @@ class Component(Node, abc.ABC):
         name: str,  # pylint: disable=redefined-builtin
         obj: Any,
         verify_function: Optional[RESOURCE_VERIFY_FUNCTION] = None,
+        deploy_method: Optional[DeployMethod] = DeployMethod.DEFAULT,
     ) -> Optional[
         ResourceNode
     ]:  # pylint: disable=unused-argument, redefined-builtin, invalid-name
@@ -252,7 +256,7 @@ class Component(Node, abc.ABC):
         # Add namespace to obj if not present
         obj.setdefault("metadata", {}).setdefault("namespace", self.session_namespace)
 
-        node = ResourceNode(name, obj, verify_function)
+        node = ResourceNode(name, obj, verify_function, deploy_method)
         self.graph.add_node(node)
         return node
 
@@ -470,7 +474,7 @@ class Component(Node, abc.ABC):
         # Iterate all ApiObject children in dependency order and perform the
         # rendering, including patches and backend modifications.
         self._managed_objects = []
-        for name, obj, verify_func in resource_list:
+        for name, obj, verify_func, deploy_method in resource_list:
             # Apply any patches to this object
             log.debug2("Applying patches to managed object: %s", name)
             log.debug4("Before Patching: %s", obj)
@@ -497,14 +501,16 @@ class Component(Node, abc.ABC):
             obj = self.update_object_definition(session, name, obj)
 
             # Add the resource to the set managed by the is component
-            managed_obj = ManagedObject(obj, verify_func)
+            managed_obj = ManagedObject(obj, verify_func, deploy_method)
             log.debug2("Adding managed object: %s", managed_obj)
             log.debug4("Final Definition: %s", obj)
             self._managed_objects.append(managed_obj)
 
         return self.managed_objects
 
-    def __gather_resources(self, session) -> List[Tuple[str, dict]]:
+    def __gather_resources(
+        self, session
+    ) -> List[Tuple[str, dict, Callable, DeployMethod]]:
         """This is a helper for __render which handles converting resource objects
         into a list of dictionaries.
         """
@@ -523,6 +529,8 @@ class Component(Node, abc.ABC):
         for child in children:
             # Construct the managed object with its internal name
             child_name = ".".join([self.name, child.get_name()])
-            resource_list.append((child_name, child.manifest, child.verify_function))
+            resource_list.append(
+                (child_name, child.manifest, child.verify_function, child.deploy_method)
+            )
 
         return resource_list

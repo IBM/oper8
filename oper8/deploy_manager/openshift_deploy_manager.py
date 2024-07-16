@@ -37,7 +37,7 @@ from .. import status as oper8_status
 from ..exceptions import assert_cluster
 from ..managed_object import ManagedObject
 from ..verify_resources import verify_subsystem
-from .base import DeployManagerBase
+from .base import DeployManagerBase, DeployMethod
 from .kube_event import KubeEventType, KubeWatchEvent
 from .owner_references import update_owner_references
 from .replace_utils import requires_replace
@@ -51,6 +51,7 @@ log = alog.use_channel("OSFTD")
 # https://github.com/kubernetes-client/python/blob/master/examples/watch/timeout-settings.md
 SERVER_WATCH_TIMEOUT = 3600
 CLIENT_WATCH_TIMEOUT = 30
+
 
 class OpenshiftDeployManager(DeployManagerBase):
     """This DeployManager uses the openshift DynamicClient to interact with the
@@ -98,6 +99,7 @@ class OpenshiftDeployManager(DeployManagerBase):
         resource_definitions: List[dict],
         manage_owner_references: bool = True,
         retry_operation: bool = True,
+        method: DeployMethod = DeployMethod.DEFAULT,
         **_,  # Accept any kwargs to compatibility
     ) -> Tuple[bool, bool]:
         """Deploy using the openshift client
@@ -120,6 +122,7 @@ class OpenshiftDeployManager(DeployManagerBase):
             self._apply,
             max_retries=config.deploy_retries if retry_operation else 0,
             manage_owner_references=manage_owner_references,
+            method=method,
         )
 
     @alog.logged_function(log.debug)
@@ -655,7 +658,7 @@ class OpenshiftDeployManager(DeployManagerBase):
     @classmethod
     def _manifest_diff(cls, manifest_a, manifest_b) -> bool:
         """Helper to compare two manifests for meaningful diff while ignoring
-        fields that always change. 
+        fields that always change.
 
         Returns:
             [bool, bool]: The first bool identifies if the resource changed while the
@@ -744,7 +747,7 @@ class OpenshiftDeployManager(DeployManagerBase):
             namespace=namespace,
             field_manager="oper8",
         ).to_dict()
-        
+
     def _apply_resource(self, resource_definition: dict) -> dict:
         """Helper function to apply a single resource to the cluster"""
         # Get the key elements of the resource
@@ -798,7 +801,7 @@ class OpenshiftDeployManager(DeployManagerBase):
                 force_conflicts=True,
             ).to_dict()
 
-    def _apply(self, resource_definition):
+    def _apply(self, resource_definition, method: DeployMethod):
         """Apply a single resource to the cluster
 
         Args:
@@ -840,12 +843,14 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         # If there is meaningful change, apply this instance
         if changed:
-            
+
             req_replace = requires_replace(current, resource_definition)
-            
+
             # If the resource requires a replace operation then use put. Otherwise use
             # server side apply
-            if req_replace:
+            if (
+                req_replace or method == DeployMethod.REPLACE
+            ) and method != DeployMethod.UPDATE:
                 apply_res = self._replace_resource(
                     resource_definition,
                 )

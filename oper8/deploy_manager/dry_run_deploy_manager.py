@@ -19,7 +19,8 @@ import alog
 
 # Local
 from ..managed_object import ManagedObject
-from .base import DeployManagerBase
+from ..utils import merge_configs
+from .base import DeployManagerBase, DeployMethod
 from .kube_event import KubeEventType, KubeWatchEvent
 from .owner_references import update_owner_references
 
@@ -51,10 +52,18 @@ class DryRunDeployManager(DeployManagerBase):
 
     ## Interface ###############################################################
 
-    def deploy(self, resource_definitions, manage_owner_references=True, **_):
+    def deploy(
+        self,
+        resource_definitions,
+        manage_owner_references=True,
+        method: DeployMethod = DeployMethod.DEFAULT,
+        **_,
+    ):
         log.info("DRY RUN deploy")
         return self._deploy(
-            resource_definitions, manage_owner_references=manage_owner_references
+            resource_definitions,
+            manage_owner_references=manage_owner_references,
+            method=method,
         )
 
     def disable(self, resource_definitions):
@@ -401,7 +410,11 @@ class DryRunDeployManager(DeployManagerBase):
             del self._cluster_content[namespace]
 
     def _deploy(
-        self, resource_definitions, call_watches=True, manage_owner_references=True
+        self,
+        resource_definitions,
+        call_watches=True,
+        manage_owner_references=True,
+        method: DeployMethod = DeployMethod.DEFAULT,
     ):
         log.info("DRY RUN deploy")
         changes = False
@@ -459,7 +472,15 @@ class DryRunDeployManager(DeployManagerBase):
                 resource["metadata"]["resourceVersion"] = str(
                     random.randint(1, 1000)
                 ).zfill(5)
-                entries[name] = resource
+                # Depending on the deploy method either update or fully replace the object
+                if method == DeployMethod.DEFAULT or method == DeployMethod.REPLACE:
+                    entries[name] = resource
+                else:
+                    if name in entries:
+                        entries[name] = merge_configs(entries[name], resource)
+                    # If the object doesn't already exist then just add it
+                    else:
+                        entries[name] = resource
 
             # Call any registered watches
             if call_watches:
