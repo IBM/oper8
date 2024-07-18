@@ -3,11 +3,18 @@ This defines the base class for all DeployManager types.
 """
 
 # Standard
+from enum import Enum
 from typing import Iterator, List, Optional, Tuple
 import abc
 
 # Local
 from .kube_event import KubeWatchEvent
+
+
+class DeployMethod(Enum):
+    DEFAULT = "default"
+    UPDATE = "update"
+    REPLACE = "replace"
 
 
 class DeployManagerBase(abc.ABC):
@@ -21,6 +28,7 @@ class DeployManagerBase(abc.ABC):
         self,
         resource_definitions: List[dict],
         manage_owner_references: bool = True,
+        method: DeployMethod = DeployMethod.DEFAULT,
     ) -> Tuple[bool, bool]:
         """The deploy function ensures that the resources defined in the list of
         definitions are deployed in the cluster.

@@ -17,6 +17,7 @@ import alog
 from oper8 import constants
 from oper8.component import Component, ManagedObject
 from oper8.constants import TEMPORARY_PATCHES_ANNOTATION_NAME
+from oper8.deploy_manager import DeployMethod
 from oper8.deploy_manager.dry_run_deploy_manager import DryRunDeployManager
 from oper8.deploy_manager.owner_references import _make_owner_reference
 from oper8.patch import STRATEGIC_MERGE_PATCH
@@ -204,6 +205,30 @@ def test_add_namespace():
         objs = comp.to_config(session)
     assert len(objs) == 1
     assert objs[0].metadata.namespace == "unique"
+
+
+def test_deploy_method():
+    """Make sure that all internal components auto add the session.namespace to
+    all resources
+    """
+    session = setup_session(namespace="unique")
+    bar = {"kind": "Foo", "apiVersion": "v1", "metadata": {"name": "bar"}}
+    bat = {"kind": "Foo", "apiVersion": "v1", "metadata": {"name": "bat"}}
+
+    class TestComponent(Component):
+        name = "bar"
+
+        def build_chart(self, session):
+            self.add_resource("replaced_bar", bar, deploy_method=DeployMethod.REPLACE)
+            self.add_resource("replaced_bat", bat, deploy_method=DeployMethod.UPDATE)
+
+    comp = TestComponent(session=session)
+
+    with library_config(internal_name_annotation=True):
+        comp.render_chart(session)
+        success = comp.deploy(session)
+
+    assert success
 
 
 def test_custom_resource_verify():
@@ -438,7 +463,12 @@ def test_deploy_before_render():
 def test_deploy_failure():
     """Make sure that a failed deploy is captured successfully"""
     session = setup_session(deploy_manager=MockDeployManager(deploy_fail=True))
-    comp = get_comp_type()(session=session)
+    comp = get_comp_type()(
+        session=session,
+        api_objects=[
+            ("bar", {"kind": "Foo", "metadata": {"name": "bar"}}),
+        ],
+    )
     comp.render_chart(session)
     deploy_success = comp.deploy(session)
     assert not deploy_success
@@ -449,7 +479,12 @@ def test_deploy_raise():
     the deploy function (to be handled by the rollout manager)
     """
     session = setup_session(deploy_manager=MockDeployManager(deploy_raise=True))
-    comp = get_comp_type()(session=session)
+    comp = get_comp_type()(
+        session=session,
+        api_objects=[
+            ("bar", {"kind": "Foo", "metadata": {"name": "bar"}}),
+        ],
+    )
     comp.render_chart(session)
     with pytest.raises(AssertionError):
         comp.deploy(session)

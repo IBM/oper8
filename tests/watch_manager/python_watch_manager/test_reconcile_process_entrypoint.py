@@ -17,6 +17,7 @@ import alog
 
 # Local
 from oper8 import DeployManagerBase
+from oper8.deploy_manager import DeployMethod
 from oper8.deploy_manager.dry_run_deploy_manager import DryRunDeployManager
 from oper8.deploy_manager.kube_event import KubeEventType
 from oper8.reconcile import ReconciliationResult
@@ -98,13 +99,18 @@ def mock_entrypoint_deploy_manager():
     original_deploy = DryRunDeployManager._deploy
 
     def mocked_deploy(
-        self, resource_definitions, call_watches=True, manage_owner_references=True
+        self,
+        resource_definitions,
+        call_watches=True,
+        manage_owner_references=True,
+        method=DeployMethod.DEFAULT,
     ):
         success, changes = original_deploy(
             self,
             resource_definitions=resource_definitions,
             call_watches=call_watches,
             manage_owner_references=manage_owner_references,
+            method=method,
         )
         if not success or not changes:
             log.debug2("Failed to deploy resources")

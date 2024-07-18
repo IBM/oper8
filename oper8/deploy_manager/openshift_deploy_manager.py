@@ -37,9 +37,10 @@ from .. import status as oper8_status
 from ..exceptions import assert_cluster
 from ..managed_object import ManagedObject
 from ..verify_resources import verify_subsystem
-from .base import DeployManagerBase
+from .base import DeployManagerBase, DeployMethod
 from .kube_event import KubeEventType, KubeWatchEvent
 from .owner_references import update_owner_references
+from .replace_utils import requires_replace
 
 log = alog.use_channel("OSFTD")
 
@@ -98,6 +99,7 @@ class OpenshiftDeployManager(DeployManagerBase):
         resource_definitions: List[dict],
         manage_owner_references: bool = True,
         retry_operation: bool = True,
+        method: DeployMethod = DeployMethod.DEFAULT,
         **_,  # Accept any kwargs to compatibility
     ) -> Tuple[bool, bool]:
         """Deploy using the openshift client
@@ -120,6 +122,7 @@ class OpenshiftDeployManager(DeployManagerBase):
             self._apply,
             max_retries=config.deploy_retries if retry_operation else 0,
             manage_owner_references=manage_owner_references,
+            method=method,
         )
 
     @alog.logged_function(log.debug)
@@ -653,9 +656,12 @@ class OpenshiftDeployManager(DeployManagerBase):
         log.debug4("Status With Ansible: %s", status)
 
     @classmethod
-    def _manifest_diff(cls, manifest_a, manifest_b):
+    def _manifest_diff(cls, manifest_a, manifest_b) -> bool:
         """Helper to compare two manifests for meaningful diff while ignoring
-        fields that always change
+        fields that always change.
+
+        Returns:
+            [bool, bool]: The first bool identifies if the resource changed while the
         """
         manifest_a = copy.deepcopy(manifest_a)
         manifest_b = copy.deepcopy(manifest_b)
@@ -705,6 +711,43 @@ class OpenshiftDeployManager(DeployManagerBase):
     ## Operations ##
     ################
 
+    def _replace_resource(self, resource_definition: dict) -> dict:
+        """Helper function to forcibly replace a resource on the cluster"""
+        # Get the key elements of the resource
+        res_id = self._get_resource_identifiers(resource_definition)
+        api_version = res_id.api_version
+        kind = res_id.kind
+        name = res_id.name
+        namespace = res_id.namespace
+
+        # Strip out managedFields to let the sever set them
+        resource_definition["metadata"]["managedFields"] = None
+
+        # Get the resource handle
+        log.debug2("Fetching resource handle [%s/%s]", api_version, kind)
+        resource_handle = self._get_resource_handle(api_version=api_version, kind=kind)
+        assert_cluster(
+            resource_handle,
+            (
+                "Failed to fetch resource handle for "
+                + f"{namespace}/{api_version}/{kind}"
+            ),
+        )
+
+        log.debug2(
+            "Attempting to put [%s/%s/%s] in %s",
+            api_version,
+            kind,
+            name,
+            namespace,
+        )
+        return resource_handle.replace(
+            resource_definition,
+            name=name,
+            namespace=namespace,
+            field_manager="oper8",
+        ).to_dict()
+
     def _apply_resource(self, resource_definition: dict) -> dict:
         """Helper function to apply a single resource to the cluster"""
         # Get the key elements of the resource
@@ -743,47 +786,22 @@ class OpenshiftDeployManager(DeployManagerBase):
                 field_manager="oper8",
             ).to_dict()
         except ConflictError:
-            try:
-                log.debug(
-                    "Overriding field manager conflict for [%s/%s/%s] in %s ",
-                    api_version,
-                    kind,
-                    name,
-                    namespace,
-                )
-                return resource_handle.server_side_apply(
-                    resource_definition,
-                    name=name,
-                    namespace=namespace,
-                    field_manager="oper8",
-                    force_conflicts=True,
-                ).to_dict()
-            except UnprocessibleEntityError as err:
-                log.debug3("Caught 422 error: %s", err, exc_info=True)
-                if config.deploy_unprocessable_put_fallback:
-                    log.debug("Falling back to PUT on 422: %s", err)
-                    return resource_handle.replace(
-                        resource_definition,
-                        name=name,
-                        namespace=namespace,
-                        field_manager="oper8",
-                    ).to_dict()
-                else:
-                    raise
-        except UnprocessibleEntityError as err:
-            log.debug3("Caught 422 error: %s", err, exc_info=True)
-            if config.deploy_unprocessable_put_fallback:
-                log.debug("Falling back to PUT on 422: %s", err)
-                return resource_handle.replace(
-                    resource_definition,
-                    name=name,
-                    namespace=namespace,
-                    field_manager="oper8",
-                ).to_dict()
-            else:
-                raise
+            log.debug(
+                "Overriding field manager conflict for [%s/%s/%s] in %s ",
+                api_version,
+                kind,
+                name,
+                namespace,
+            )
+            return resource_handle.server_side_apply(
+                resource_definition,
+                name=name,
+                namespace=namespace,
+                field_manager="oper8",
+                force_conflicts=True,
+            ).to_dict()
 
-    def _apply(self, resource_definition):
+    def _apply(self, resource_definition, method: DeployMethod):
         """Apply a single resource to the cluster
 
         Args:
@@ -825,7 +843,29 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         # If there is meaningful change, apply this instance
         if changed:
-            apply_res = self._apply_resource(resource_definition)
+
+            req_replace = requires_replace(current, resource_definition)
+
+            # If the resource requires a replace operation then use put. Otherwise use
+            # server side apply
+            if (
+                req_replace or method == DeployMethod.REPLACE
+            ) and method != DeployMethod.UPDATE:
+                apply_res = self._replace_resource(
+                    resource_definition,
+                )
+            else:
+                try:
+                    apply_res = self._apply_resource(resource_definition)
+                except UnprocessibleEntityError as err:
+                    log.debug3("Caught 422 error: %s", err, exc_info=True)
+                    if config.deploy_unprocessable_put_fallback:
+                        log.debug("Falling back to PUT on 422: %s", err)
+                        apply_res = self._replace_resource(
+                            resource_definition,
+                        )
+                    else:
+                        raise
 
             # Recompute the diff to determine if the apply actually caused a
             # meaningful change. This may have a different result than the check

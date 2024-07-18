@@ -106,6 +106,28 @@ class ReconcileProcessDeployManager(OpenshiftDeployManager):
 
         return resource
 
+    def _replace_resource(self, resource_definition: dict) -> dict:
+        """Override replace resource for handling watch_dependent_resources and subsystem rollout"""
+        resource = super()._replace_resource(resource_definition)
+        resource_id = ResourceId.from_resource(resource)
+
+        # Send watch request if watch_dependent_resources is enabled
+        # and/or handle subsystem rollout
+        if config.python_watch_manager.watch_dependent_resources:
+            log.debug2("Handling dependent resource %s", resource_id)
+            self._handle_dependent_resource(resource_id)
+
+        if (
+            config.python_watch_manager.subsystem_rollout
+            and resource_id.global_id in self.subsystems
+        ):
+            log.debug2("Rolling out subsystem %s", resource_id.global_id)
+            self._handle_subsystem(
+                resource, self.subsystems[resource_id.global_id], False
+            )
+
+        return resource
+
     def _disable(self, resource_definition: dict) -> bool:
         """Override disable to insert subsystem logic"""
 
