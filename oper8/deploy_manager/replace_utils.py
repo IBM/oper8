@@ -36,7 +36,7 @@ def modified_value_from(current_manifest: Any, desired_manifest: Any) -> bool:
     exclusive thus they require a replace command.
     """
     if isinstance(current_manifest, list) and isinstance(desired_manifest, list):
-        iteration_len = min(len(current_manifest), desired_manifest)
+        iteration_len = min(len(current_manifest), len(desired_manifest))
         for i in range(iteration_len):
             if modified_value_from(current_manifest[i], desired_manifest[i]):
                 return True
