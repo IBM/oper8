@@ -4,30 +4,49 @@ for a resource
 # Standard
 from typing import Any, Callable, List
 
-# Third Party
-from openshift.dynamic.apply import recursive_list_diff
-
 # First Party
 import alog
 
 log = alog.use_channel("DMRPLC_UTILS")
 
 
-def modified_lists(current_manifest: dict, desired_manifest: dict) -> bool:
+def modified_lists(
+    current_manifest: dict, desired_manifest: dict, in_list: bool = False
+) -> bool:
     """Helper function to check if there are any differences in the lists of the desired manifest.
     This is required because Kubernetes combines lists which is often not the desired use
     """
-    for k in set(current_manifest.keys()).intersection(set(desired_manifest.keys())):
-        if isinstance(current_manifest[k], list) and isinstance(
-            desired_manifest[k], list
-        ):
-            if bool(recursive_list_diff(current_manifest[k], desired_manifest[k])):
+    if isinstance(current_manifest, list) and isinstance(desired_manifest, list):
+        # if the desired has less then the current then return True. Removing
+        # from a list requires a put
+        if len(current_manifest) > len(desired_manifest):
+            log.debug4("Requires replace due to list deletion")
+            return True
+        # Iterate over the desired manifest
+        for i in range(min(len(current_manifest), len(desired_manifest))):
+            if modified_lists(current_manifest[i], desired_manifest[i], in_list=True):
                 return True
-        elif isinstance(current_manifest[k], dict) and isinstance(  # noqa: SIM102
-            desired_manifest[k], dict
-        ):
+    if isinstance(current_manifest, dict) and isinstance(desired_manifest, dict):
+        key_intersection = set(current_manifest.keys()).intersection(
+            set(desired_manifest.keys())
+        )
+        # If there are no common keys and we're in a list then return True
+        # this means we have a new object
+        if in_list and not key_intersection:
+            log.debug4("Requires replace due to no common key in list")
+            return True
+
+        # Tack if one key has the same value. This is
+        # required for kubernetes merges
+        at_least_one_common = False
+        for k in key_intersection:
+            if current_manifest[k] == desired_manifest[k]:
+                at_least_one_common = True
             if modified_lists(current_manifest[k], desired_manifest[k]):
                 return True
+        if in_list and not at_least_one_common:
+            log.debug4("Requires replace due to no common key/value in list")
+            return True
     return False
 
 
@@ -44,6 +63,7 @@ def modified_value_from(current_manifest: Any, desired_manifest: Any) -> bool:
         if ("value" in current_manifest and "valueFrom" in desired_manifest) or (
             "valueFrom" in current_manifest and "value" in desired_manifest
         ):
+            log.debug4("Requires replace due to value/valueFrom change")
             return True
         else:
             for k in set(current_manifest.keys()).intersection(
