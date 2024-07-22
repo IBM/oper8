@@ -31,6 +31,9 @@ def sample_object():
                 "valueFrom": "False",
             },
         ],
+        "dicts_in_lists": [
+            {"someDict": {"someValue": "onetwo", "other": "threefour"}},
+        ],
         "list": [
             {"name": "container1"},
             {"name": "container2"},
@@ -92,6 +95,23 @@ def test_value_operations(desired_obj):
                     {"name": "container1"},
                     {"name": "container2"},
                     {"name": "container3"},
+                ],
+            },
+            False,
+        ],
+        [
+            {
+                "dicts_in_lists": [
+                    {"someDict": {"someValue": "onetwo", "other": "threefour"}},
+                ],
+            },
+            False,
+        ],
+        [
+            {
+                "dicts_in_lists": [
+                    {"someDict": {"someValue": "onetwo", "other": "threefour"}},
+                    {"appendedDict": {"someValue": "onetwo", "other": "threefour"}},
                 ],
             },
             False,
