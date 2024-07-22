@@ -11,7 +11,7 @@ import pytest
 import alog
 
 # Local
-from oper8.deploy_manager.replace_utils import requires_replace, REPLACE_FUNCS
+from oper8.deploy_manager.replace_utils import REPLACE_FUNCS, requires_replace
 
 ## Helpers #####################################################################
 
@@ -84,7 +84,7 @@ def test_value_operations(desired_obj):
 
 
 @pytest.mark.parametrize(
-    ["desired_obj"],
+    ["desired_obj", "requires"],
     [
         [
             {
@@ -93,14 +93,16 @@ def test_value_operations(desired_obj):
                     {"name": "container2"},
                     {"name": "container3"},
                 ],
-            }
+            },
+            False,
         ],
         [
             {
                 "list": [
                     {"name": "container1"},
                 ],
-            }
+            },
+            True,
         ],
         [
             {
@@ -108,17 +110,28 @@ def test_value_operations(desired_obj):
                     {"name": "container1"},
                     {"name": "container_changed"},
                 ],
-            }
+            },
+            True,
+        ],
+        [
+            {
+                "list": [
+                    {"name": "container1"},
+                    {"name": "container4"},
+                ],
+            },
+            True,
         ],
     ],
 )
-def test_list_operations(desired_obj):
+def test_list_operations(desired_obj, requires) -> None:
     """Test that adding a ref to an object with none present adds as expected"""
     current_obj = sample_object()
-    assert requires_replace(current_obj, desired_obj)
+    assert requires_replace(current_obj, desired_obj) == requires
     # Ensure each replace function is still able to be called
     for func in REPLACE_FUNCS:
         func(current_obj, desired_obj)
+
 
 ## Patch functions ##################################################################
 

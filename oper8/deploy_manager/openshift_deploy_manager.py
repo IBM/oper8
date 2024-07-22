@@ -656,13 +656,7 @@ class OpenshiftDeployManager(DeployManagerBase):
         log.debug4("Status With Ansible: %s", status)
 
     @classmethod
-    def _manifest_diff(cls, manifest_a, manifest_b) -> bool:
-        """Helper to compare two manifests for meaningful diff while ignoring
-        fields that always change.
-
-        Returns:
-            [bool, bool]: The first bool identifies if the resource changed while the
-        """
+    def _clean_manifest(cls, manifest_a: dict, manifest_b: dict) -> Tuple[dict, dict]:
         manifest_a = copy.deepcopy(manifest_a)
         manifest_b = copy.deepcopy(manifest_b)
         for metadata_field in [
@@ -674,6 +668,18 @@ class OpenshiftDeployManager(DeployManagerBase):
         ]:
             manifest_a.get("metadata", {}).pop(metadata_field, None)
             manifest_b.get("metadata", {}).pop(metadata_field, None)
+        return (manifest_a, manifest_b)
+
+    @classmethod
+    def _manifest_diff(cls, manifest_a, manifest_b) -> bool:
+        """Helper to compare two manifests for meaningful diff while ignoring
+        fields that always change.
+
+        Returns:
+            [bool, bool]: The first bool identifies if the resource changed while the
+        """
+
+        manifest_a, manifest_b = cls._clean_manifest(manifest_a, manifest_b)
 
         cls._strip_last_applied([manifest_b, manifest_a])
         diff = recursive_diff(
@@ -685,6 +691,20 @@ class OpenshiftDeployManager(DeployManagerBase):
         log.debug3("A: %s", manifest_a)
         log.debug3("B: %s", manifest_b)
         return change
+
+    @classmethod
+    def _requires_replace(cls, manifest_a, manifest_b) -> bool:
+        """Helper to compare two manifests to see if they require
+        replace
+
+        Returns:
+            bool: If the resource requires a replace operation
+        """
+
+        manifest_a, manifest_b = cls._clean_manifest(manifest_a, manifest_b)
+
+        change = bool(requires_replace(manifest_a, manifest_b))
+        log.debug2("Requires Replace? %s", change)
 
     # Internal struct to hold the key resource identifier elements
     _ResourceIdentifiers = namedtuple(
@@ -844,7 +864,7 @@ class OpenshiftDeployManager(DeployManagerBase):
         # If there is meaningful change, apply this instance
         if changed:
 
-            req_replace = requires_replace(current, resource_definition)
+            req_replace = self._requires_replace(current, resource_definition)
 
             # If the resource requires a replace operation then use put. Otherwise use
             # server side apply
