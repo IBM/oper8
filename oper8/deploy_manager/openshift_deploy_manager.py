@@ -705,7 +705,7 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         change = bool(requires_replace(manifest_a, manifest_b))
         log.debug2("Requires Replace? %s", change)
-
+        return change
     # Internal struct to hold the key resource identifier elements
     _ResourceIdentifiers = namedtuple(
         "ResourceIdentifiers", ["api_version", "kind", "name", "namespace"]
