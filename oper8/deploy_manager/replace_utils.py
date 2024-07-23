@@ -4,6 +4,9 @@ for a resource
 # Standard
 from typing import Any, Callable, List
 
+# Third Party
+from openshift.dynamic.apply import recursive_diff, recursive_list_diff
+
 # First Party
 import alog
 
@@ -40,7 +43,18 @@ def modified_lists(
         # required for kubernetes merges
         at_least_one_common = False
         for k in key_intersection:
-            if current_manifest[k] == desired_manifest[k]:
+            # Check if two objects are the same for their value operations
+            changed = False
+            if isinstance(current_manifest[k], list):
+                changed = bool(
+                    recursive_list_diff(current_manifest[k], desired_manifest[k])
+                )
+            elif isinstance(current_manifest[k], dict):
+                changed = bool(recursive_diff(current_manifest[k], desired_manifest[k]))
+            else:
+                changed = current_manifest[k] != desired_manifest[k]
+
+            if not changed:
                 at_least_one_common = True
             if modified_lists(current_manifest[k], desired_manifest[k]):
                 return True

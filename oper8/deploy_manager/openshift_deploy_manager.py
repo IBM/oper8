@@ -705,6 +705,7 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         change = bool(requires_replace(manifest_a, manifest_b))
         log.debug2("Requires Replace? %s", change)
+        return change
 
     # Internal struct to hold the key resource identifier elements
     _ResourceIdentifiers = namedtuple(
@@ -864,7 +865,9 @@ class OpenshiftDeployManager(DeployManagerBase):
         # If there is meaningful change, apply this instance
         if changed:
 
-            req_replace = self._requires_replace(current, resource_definition)
+            req_replace = False
+            if method == DeployMethod.DEFAULT:
+                req_replace = self._requires_replace(current, resource_definition)
 
             # If the resource requires a replace operation then use put. Otherwise use
             # server side apply
