@@ -34,6 +34,7 @@ import alog
 # Local
 from .. import config
 from .. import status as oper8_status
+from ..constants import CLUSTER_CONTROLLER_ANNOTATIONS
 from ..exceptions import assert_cluster
 from ..managed_object import ManagedObject
 from ..verify_resources import verify_subsystem
@@ -693,6 +694,37 @@ class OpenshiftDeployManager(DeployManagerBase):
         return change
 
     @classmethod
+    def _retain_kubernetes_annotations(cls, current: dict, desired: dict) -> bool:
+        """Helper to compare two manifests for meaningful diff while ignoring
+        fields that always change.
+
+        Returns:
+            [bool, bool]: The first bool identifies if the resource changed while the
+        """
+
+        identifiers = cls._get_resource_identifiers(desired)
+        if "annotations" not in desired["metadata"]:
+            desired["metadata"]["annotations"] = {}
+
+        for annotation, annotation_value in (
+            current.get("metadata", {}).get("annotations", {}).items()
+        ):
+            for cluster_annotation in CLUSTER_CONTROLLER_ANNOTATIONS:
+                if (
+                    cluster_annotation in annotation
+                    and annotation not in desired["metadata"]["annotations"]
+                ):
+                    log.debug4(
+                        "Retaining annotation %s for [%s/%s/%s]",
+                        annotation,
+                        identifiers.kind,
+                        identifiers.api_version,
+                        identifiers.name,
+                    )
+                    desired["metadata"]["annotations"][annotation] = annotation_value
+        return desired
+
+    @classmethod
     def _requires_replace(cls, manifest_a, manifest_b) -> bool:
         """Helper to compare two manifests to see if they require
         replace
@@ -864,6 +896,10 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         # If there is meaningful change, apply this instance
         if changed:
+
+            resource_definition = self._retain_kubernetes_annotations(
+                current, resource_definition
+            )
 
             req_replace = False
             if method == DeployMethod.DEFAULT:

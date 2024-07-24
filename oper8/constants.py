@@ -31,6 +31,15 @@ PASSTHROUGH_ANNOTATIONS = [
     PAUSE_ANNOTATION_NAME,
 ]
 
+# List to keep track of all Kubernetes and Openshift annotations that should be retained
+# on resources
+CLUSTER_CONTROLLER_ANNOTATIONS = [
+    "kubernetes.io",
+    "openshift.io",
+    "k8s.ovn.org",
+    "cncf.io",
+]
+
 # BACKWARDS COMPATIBILITY: We maintain the ALL_ANNOTATIONS name for
 # compatibility with old code that accessed this directly
 ALL_ANNOTATIONS = PASSTHROUGH_ANNOTATIONS
