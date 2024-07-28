@@ -128,6 +128,9 @@ class ResourceNode(Node):
         super().__init__(name, manifest)
         self._verify_function = verify_func
         self._deploy_method = deploy_method
+        if not deploy_method:
+            from ..deploy_manager import DeployMethod
+            self._deploy_method = DeployMethod.DEFAULT
 
     ## ApiObject Parameters and Functions ######################################
     @property

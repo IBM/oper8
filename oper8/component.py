@@ -193,7 +193,7 @@ class Component(Node, abc.ABC):
         for obj in self.managed_objects:
             success, _ = session.deploy_manager.deploy(
                 resource_definitions=[obj.definition],
-                method=obj.deploy_method or DeployMethod.DEFAULT,
+                method=obj.deploy_method,
             )
             if not success:
                 log.warning("Failed to deploy [%s]", self)
