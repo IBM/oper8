@@ -11,7 +11,7 @@ import pytest
 import alog
 
 # Local
-from oper8.deploy_manager.replace_utils import REPLACE_FUNCS, requires_replace
+from oper8.deploy_manager.replace_utils import _REPLACE_FUNCS, requires_replace
 
 ## Helpers #####################################################################
 
@@ -82,7 +82,7 @@ def test_value_operations(desired_obj):
     current_obj = sample_object()
     assert requires_replace(current_obj, desired_obj)
     # Ensure each replace function is still able to be called
-    for func in REPLACE_FUNCS:
+    for func in _REPLACE_FUNCS:
         func(current_obj, desired_obj)
 
 
@@ -149,7 +149,7 @@ def test_list_operations(desired_obj, requires) -> None:
     current_obj = sample_object()
     assert requires_replace(current_obj, desired_obj) == requires
     # Ensure each replace function is still able to be called
-    for func in REPLACE_FUNCS:
+    for func in _REPLACE_FUNCS:
         func(current_obj, desired_obj)
 
 

@@ -19,6 +19,15 @@ def modified_lists(
     """Helper function to check if there are any differences in the lists of the desired manifest.
     This is required because Kubernetes combines lists which is often not the desired use
     """
+    # If type mismatch then assume replace
+    if (
+        desired_manifest
+        and current_manifest
+        and type(desired_manifest) is not type(current_manifest)
+    ):
+        log.debug4("Requires replace due to type mismatch")
+        return True
+
     if isinstance(current_manifest, list) and isinstance(desired_manifest, list):
         # if the desired has less then the current then return True. Removing
         # from a list requires a put
@@ -26,8 +35,8 @@ def modified_lists(
             log.debug4("Requires replace due to list deletion")
             return True
         # Iterate over the desired manifest
-        for i in range(min(len(current_manifest), len(desired_manifest))):
-            if modified_lists(current_manifest[i], desired_manifest[i], in_list=True):
+        for recurse_a, recurse_b in zip(current_manifest, desired_manifest):
+            if modified_lists(recurse_a, recurse_b, in_list=True):
                 return True
     if isinstance(current_manifest, dict) and isinstance(desired_manifest, dict):
         key_intersection = set(current_manifest.keys()).intersection(
@@ -56,6 +65,8 @@ def modified_lists(
 
             if not changed:
                 at_least_one_common = True
+
+            # Recurse on modified lists
             if modified_lists(current_manifest[k], desired_manifest[k]):
                 return True
         if in_list and not at_least_one_common:
@@ -68,10 +79,18 @@ def modified_value_from(current_manifest: Any, desired_manifest: Any) -> bool:
     """Helper function to check if a manifest switched from value to valueFrom. These are mutually
     exclusive thus they require a replace command.
     """
+    # If type mismatch then assume replace
+    if (
+        desired_manifest
+        and current_manifest
+        and type(desired_manifest) is not type(current_manifest)
+    ):
+        log.debug4("Requires replace due to type mismatch")
+        return True
+
     if isinstance(current_manifest, list) and isinstance(desired_manifest, list):
-        iteration_len = min(len(current_manifest), len(desired_manifest))
-        for i in range(iteration_len):
-            if modified_value_from(current_manifest[i], desired_manifest[i]):
+        for recurse_a, recurse_b in zip(current_manifest, desired_manifest):
+            if modified_value_from(recurse_a, recurse_b):
                 return True
     if isinstance(current_manifest, dict) and isinstance(desired_manifest, dict):
         if ("value" in current_manifest and "valueFrom" in desired_manifest) or (
@@ -88,7 +107,7 @@ def modified_value_from(current_manifest: Any, desired_manifest: Any) -> bool:
     return False
 
 
-REPLACE_FUNCS: List[Callable[[str, str], bool]] = [modified_lists, modified_value_from]
+_REPLACE_FUNCS: List[Callable[[str, str], bool]] = [modified_lists, modified_value_from]
 
 
 def requires_replace(current_manifest: dict, desired_manifest: dict) -> bool:
@@ -102,7 +121,7 @@ def requires_replace(current_manifest: dict, desired_manifest: dict) -> bool:
     Returns:
         bool: If the current manifest requires a replace operation
     """
-    for func in REPLACE_FUNCS:
+    for func in _REPLACE_FUNCS:
         if func(current_manifest, desired_manifest):
             log.debug4("Manifest requires replace", desired_manifest)
             return True
