@@ -905,6 +905,14 @@ class OpenshiftDeployManager(DeployManagerBase):
             if method == DeployMethod.DEFAULT:
                 req_replace = self._requires_replace(current, resource_definition)
 
+            log.debug2(
+                "Attempting to deploy [%s/%s/%s] in %s with %s",
+                api_version,
+                kind,
+                name,
+                namespace,
+                method,
+            )
             # If the resource requires a replace operation then use put. Otherwise use
             # server side apply
             if (

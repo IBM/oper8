@@ -18,6 +18,7 @@ import alog
 # Local
 from oper8 import config
 from oper8 import status as oper8_status
+from oper8.deploy_manager.base import DeployMethod
 from oper8.deploy_manager.kube_event import KubeEventType
 from oper8.deploy_manager.openshift_deploy_manager import OpenshiftDeployManager
 from oper8.deploy_manager.owner_references import _make_owner_reference
@@ -188,6 +189,67 @@ def test_deploy_update_resource_no_change():
     success, changed = dm.deploy(make_obj_states(cluster_state))
     assert success
     assert not changed
+
+
+def test_deploy_method_resource():
+    """Make sure that deploying a new instance of an existing resource type to
+    the cluster works
+    """
+    start_cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {}}}}
+    end_cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {"bar": {}}}}}
+    end_apply_resource = {
+        "kind": "Foo",
+        "apiVersion": "foo.bar.com/v1",
+        "metadata": {"name": "bar", "namespace": "test"},
+        "spec": {"some": "key"},
+    }
+    dm = setup_testable_manager(cluster_state=start_cluster_state)
+    dm._requires_replace = lambda *args, **kwargs: True
+
+    replace_called = []
+
+    def track_replace(resource_definition: dict):
+        replace_called.append(resource_definition)
+        return MockedOpenshiftDeployManager._replace_resource(dm, resource_definition)
+
+    dm._replace_resource = track_replace
+
+    apply_called = []
+
+    def track_apply(resource_definition):
+        apply_called.append(resource_definition)
+        return MockedOpenshiftDeployManager._apply_resource(dm, resource_definition)
+
+    dm._apply_resource = track_apply
+
+    success, changed = dm.deploy(
+        resource_definitions=make_obj_states(end_cluster_state),
+        method=DeployMethod.REPLACE,
+    )
+    assert success
+    assert changed
+    assert len(replace_called) == 1 and len(apply_called) == 0
+
+    success, changed = dm.deploy(
+        resource_definitions=[end_apply_resource], method=DeployMethod.UPDATE
+    )
+    assert success
+    assert changed
+    assert len(replace_called) == 1 and len(apply_called) == 1
+
+
+def test_deploy_method_update_resource():
+    """Make sure that deploying a new instance of an existing resource type to
+    the cluster works
+    """
+    start_cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {}}}}
+    end_cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {"bar": {}}}}}
+    dm = setup_testable_manager(cluster_state=start_cluster_state)
+    success, changed = dm.deploy(
+        make_obj_states(end_cluster_state), DeployMethod.UPDATE
+    )
+    assert success
+    assert changed
 
 
 def test_deploy_unknown_resource_type():

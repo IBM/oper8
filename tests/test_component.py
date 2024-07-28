@@ -3,6 +3,7 @@ Test the implementations of the default functions in Component
 """
 
 # Standard
+from unittest import mock
 import os
 import tempfile
 
@@ -224,9 +225,21 @@ def test_deploy_method():
 
     comp = TestComponent(session=session)
 
-    with library_config(internal_name_annotation=True):
-        comp.render_chart(session)
-        success = comp.deploy(session)
+    arg_kwarg_list = []
+
+    def append_call_args(*args, **kwargs):
+        arg_kwarg_list.append([args, kwargs])
+        return (True, True)
+
+    with mock.patch.object(
+        session.deploy_manager, "deploy", new=append_call_args
+    ) as deployed:
+        with library_config(internal_name_annotation=True):
+            comp.render_chart(session)
+            success = comp.deploy(session)
+
+        assert arg_kwarg_list[0][1]["method"] == DeployMethod.REPLACE
+        assert arg_kwarg_list[1][1]["method"] == DeployMethod.UPDATE
 
     assert success
 
