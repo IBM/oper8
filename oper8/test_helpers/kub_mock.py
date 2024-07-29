@@ -312,7 +312,7 @@ class MockKubClient(kubernetes.client.ApiClient):
                 endpoint = f"{api_endpoint}/{kind_variant}/*"
 
             log.debug2(
-                "Adding POST & PUT &GET & WATCH & PATCH handler for (%s: %s)",
+                "Adding POST & PUT & GET & WATCH & PATCH handler for (%s: %s)",
                 kind,
                 endpoint,
             )
