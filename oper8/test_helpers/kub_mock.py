@@ -312,7 +312,9 @@ class MockKubClient(kubernetes.client.ApiClient):
                 endpoint = f"{api_endpoint}/{kind_variant}/*"
 
             log.debug2(
-                "Adding POST & GET & WATCH & PATCH handler for (%s: %s)", kind, endpoint
+                "Adding POST & PUT &GET & WATCH & PATCH handler for (%s: %s)",
+                kind,
+                endpoint,
             )
             self._handlers[endpoint] = {
                 "WATCH": lambda resource_path, body, *_, **__: (
@@ -321,6 +323,9 @@ class MockKubClient(kubernetes.client.ApiClient):
                     )
                 ),
                 "PATCH": lambda resource_path, body, *_, **__: (
+                    self.current_state_patch(resource_path, api_version, kind, body)
+                ),
+                "PUT": lambda resource_path, body, *_, **__: (
                     self.current_state_patch(resource_path, api_version, kind, body)
                 ),
                 "POST": lambda resource_path, body, *_, **__: (

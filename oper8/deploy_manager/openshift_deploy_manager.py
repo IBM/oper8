@@ -34,7 +34,6 @@ import alog
 # Local
 from .. import config
 from .. import status as oper8_status
-from ..constants import CLUSTER_CONTROLLER_ANNOTATIONS
 from ..exceptions import assert_cluster
 from ..managed_object import ManagedObject
 from ..verify_resources import verify_subsystem
@@ -658,6 +657,12 @@ class OpenshiftDeployManager(DeployManagerBase):
 
     @classmethod
     def _clean_manifest(cls, manifest_a: dict, manifest_b: dict) -> Tuple[dict, dict]:
+        """Clean two manifests before being compared. This removes fields that
+        change every reconcile
+
+        Returns:
+            Tuple[dict, dict]: The cleaned manifests
+        """
         manifest_a = copy.deepcopy(manifest_a)
         manifest_b = copy.deepcopy(manifest_b)
         for metadata_field in [
@@ -694,26 +699,23 @@ class OpenshiftDeployManager(DeployManagerBase):
         return change
 
     @classmethod
-    def _retain_kubernetes_annotations(cls, current: dict, desired: dict) -> bool:
-        """Helper to compare two manifests for meaningful diff while ignoring
-        fields that always change.
+    def _retain_kubernetes_annotations(cls, current: dict, desired: dict) -> dict:
+        """Helper to update a desired manifest with certain annotations from the existing
+        resource. This stops other controllers from re-reconciling this resource
 
         Returns:
-            [bool, bool]: The first bool identifies if the resource changed while the
+            dict: updated resource
         """
 
         identifiers = cls._get_resource_identifiers(desired)
-        if "annotations" not in desired["metadata"]:
-            desired["metadata"]["annotations"] = {}
 
         for annotation, annotation_value in (
             current.get("metadata", {}).get("annotations", {}).items()
         ):
-            for cluster_annotation in CLUSTER_CONTROLLER_ANNOTATIONS:
-                if (
-                    cluster_annotation in annotation
-                    and annotation not in desired["metadata"]["annotations"]
-                ):
+            for cluster_annotation in config.cluster_passthrough_annotations:
+                if cluster_annotation in annotation and annotation not in desired[
+                    "metadata"
+                ].get("annotations", {}):
                     log.debug4(
                         "Retaining annotation %s for [%s/%s/%s]",
                         annotation,
@@ -721,7 +723,9 @@ class OpenshiftDeployManager(DeployManagerBase):
                         identifiers.api_version,
                         identifiers.name,
                     )
-                    desired["metadata"]["annotations"][annotation] = annotation_value
+                    desired["metadata"].setdefault("annotations", {})[
+                        annotation
+                    ] = annotation_value
         return desired
 
     @classmethod
@@ -902,13 +906,21 @@ class OpenshiftDeployManager(DeployManagerBase):
             )
 
             req_replace = False
-            if method == DeployMethod.DEFAULT:
+            if method is DeployMethod.DEFAULT:
                 req_replace = self._requires_replace(current, resource_definition)
 
+            log.debug2(
+                "Attempting to deploy [%s/%s/%s] in %s with %s",
+                api_version,
+                kind,
+                name,
+                namespace,
+                method,
+            )
             # If the resource requires a replace operation then use put. Otherwise use
             # server side apply
             if (
-                req_replace or method == DeployMethod.REPLACE
+                req_replace or method is DeployMethod.REPLACE
             ) and method != DeployMethod.UPDATE:
                 apply_res = self._replace_resource(
                     resource_definition,

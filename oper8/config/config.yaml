@@ -43,6 +43,14 @@ deploy_retries: 3
 # CITE: https://github.com/kubernetes/kubernetes/issues/46861
 deploy_unprocessable_put_fallback: false
 
+# List to keep track of all Kubernetes and Openshift annotations that should be retained
+# on resources
+cluster_passthrough_annotations:
+  - "kubernetes.io"
+  - "openshift.io"
+  - "k8s.ovn.org"
+  - "cncf.io"
+
 # Retry backoff value in seconds
 retry_backoff_base_seconds: 0.01
 
