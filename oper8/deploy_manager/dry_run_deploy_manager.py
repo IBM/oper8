@@ -3,6 +3,7 @@ The DryRunDeployManager implements the DeployManager interface but does not
 actually interact with the cluster and instead holds the state of the cluster in
 a local map.
 """
+
 # Standard
 from datetime import datetime, timedelta
 from functools import partial
@@ -35,7 +36,13 @@ class DryRunDeployManager(DeployManagerBase):
     Deploy manager which doesn't actually deploy!
     """
 
-    def __init__(self, resources=None, owner_cr=None, strict_resource_version=False, generate_resource_version=True):
+    def __init__(
+        self,
+        resources=None,
+        owner_cr=None,
+        strict_resource_version=False,
+        generate_resource_version=True,
+    ):
         """Construct with a static value to use for whether or not the functions
         should report change.
         """
@@ -470,7 +477,7 @@ class DryRunDeployManager(DeployManagerBase):
                 resource["metadata"]["uid"] = entries.get("metadata", {}).get(
                     "uid", str(uuid.uuid4())
                 )
-                
+
                 if self.generate_resource_version:
                     resource["metadata"]["resourceVersion"] = str(
                         random.randint(1, 1000)
