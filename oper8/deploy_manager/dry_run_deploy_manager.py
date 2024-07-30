@@ -35,13 +35,14 @@ class DryRunDeployManager(DeployManagerBase):
     Deploy manager which doesn't actually deploy!
     """
 
-    def __init__(self, resources=None, owner_cr=None, strict_resource_version=False):
+    def __init__(self, resources=None, owner_cr=None, strict_resource_version=False, generate_resource_version=True):
         """Construct with a static value to use for whether or not the functions
         should report change.
         """
         self._owner_cr = owner_cr
         self._cluster_content = {}
         self.strict_resource_version = strict_resource_version
+        self.generate_resource_version = generate_resource_version
 
         # Dicts of registered watches and watchers
         self._watches = {}
@@ -469,9 +470,12 @@ class DryRunDeployManager(DeployManagerBase):
                 resource["metadata"]["uid"] = entries.get("metadata", {}).get(
                     "uid", str(uuid.uuid4())
                 )
-                resource["metadata"]["resourceVersion"] = str(
-                    random.randint(1, 1000)
-                ).zfill(5)
+                
+                if self.generate_resource_version:
+                    resource["metadata"]["resourceVersion"] = str(
+                        random.randint(1, 1000)
+                    ).zfill(5)
+
                 # Depending on the deploy method either update or fully replace the object
                 if method == DeployMethod.DEFAULT or method == DeployMethod.REPLACE:
                     entries[name] = resource

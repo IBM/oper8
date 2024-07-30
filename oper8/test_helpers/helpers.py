@@ -209,6 +209,7 @@ class MockDeployManager(DryRunDeployManager):
         disable_raise=False,
         get_state_fail=False,
         get_state_raise=False,
+        generate_resource_version=True,
         set_status_fail=False,
         set_status_raise=False,
         auto_enable=True,
@@ -230,7 +231,7 @@ class MockDeployManager(DryRunDeployManager):
 
         for resource in resources:
             resource.setdefault("apiVersion", "v1")
-        super().__init__(resources, **kwargs)
+        super().__init__(resources, generate_resource_version=generate_resource_version, **kwargs)
 
         self.deploy_fail = "assert" if deploy_raise else deploy_fail
         self.disable_fail = "assert" if disable_raise else disable_fail
