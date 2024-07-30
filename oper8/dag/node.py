@@ -118,11 +118,21 @@ class ResourceNode(Node):
     a function for verifying said resource"""
 
     def __init__(
-        self, name: str, manifest: dict, verify_func: Optional[Callable] = None
+        self,
+        name: str,
+        manifest: dict,
+        verify_func: Optional[Callable] = None,
+        deploy_method: Optional["DeployMethod"] = None,  # noqa: F821
     ):
         # Override init to require name/manifest parameters
         super().__init__(name, manifest)
         self._verify_function = verify_func
+        self._deploy_method = deploy_method
+        if not deploy_method:
+            # Local
+            from ..deploy_manager import DeployMethod
+
+            self._deploy_method = DeployMethod.DEFAULT
 
     ## ApiObject Parameters and Functions ######################################
     @property
@@ -159,6 +169,11 @@ class ResourceNode(Node):
     def verify_function(self) -> Optional[Callable]:
         """The resource manifest"""
         return self._verify_function
+
+    @property
+    def deploy_method(self) -> Optional["DeployMethod"]:  # noqa: F821
+        """The resource manifest"""
+        return self._deploy_method
 
     def add_dependency(self, node: "ResourceNode"):
         """Add a child dependency to this node"""

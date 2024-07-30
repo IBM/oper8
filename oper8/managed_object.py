@@ -11,7 +11,12 @@ KUBE_LIST_IDENTIFIER = "List"
 class ManagedObject:  # pylint: disable=too-many-instance-attributes
     """Basic struct to represent a managed kubernetes object"""
 
-    def __init__(self, definition: dict, verify_function: Optional[Callable] = None):
+    def __init__(
+        self,
+        definition: dict,
+        verify_function: Optional[Callable] = None,
+        deploy_method: Optional["DeployMethod"] = None,  # noqa: F821
+    ):
         self.kind = definition.get("kind")
         self.metadata = definition.get("metadata", {})
         self.name = self.metadata.get("name")
@@ -21,6 +26,7 @@ class ManagedObject:  # pylint: disable=too-many-instance-attributes
         self.api_version = definition.get("apiVersion")
         self.definition = definition
         self.verify_function = verify_function
+        self.deploy_method = deploy_method
 
         # If resource is not list then check name
         if KUBE_LIST_IDENTIFIER not in self.kind:

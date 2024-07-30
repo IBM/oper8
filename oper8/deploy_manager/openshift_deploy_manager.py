@@ -37,9 +37,10 @@ from .. import status as oper8_status
 from ..exceptions import assert_cluster
 from ..managed_object import ManagedObject
 from ..verify_resources import verify_subsystem
-from .base import DeployManagerBase
+from .base import DeployManagerBase, DeployMethod
 from .kube_event import KubeEventType, KubeWatchEvent
 from .owner_references import update_owner_references
+from .replace_utils import requires_replace
 
 log = alog.use_channel("OSFTD")
 
@@ -98,6 +99,7 @@ class OpenshiftDeployManager(DeployManagerBase):
         resource_definitions: List[dict],
         manage_owner_references: bool = True,
         retry_operation: bool = True,
+        method: DeployMethod = DeployMethod.DEFAULT,
         **_,  # Accept any kwargs to compatibility
     ) -> Tuple[bool, bool]:
         """Deploy using the openshift client
@@ -120,6 +122,7 @@ class OpenshiftDeployManager(DeployManagerBase):
             self._apply,
             max_retries=config.deploy_retries if retry_operation else 0,
             manage_owner_references=manage_owner_references,
+            method=method,
         )
 
     @alog.logged_function(log.debug)
@@ -653,9 +656,12 @@ class OpenshiftDeployManager(DeployManagerBase):
         log.debug4("Status With Ansible: %s", status)
 
     @classmethod
-    def _manifest_diff(cls, manifest_a, manifest_b):
-        """Helper to compare two manifests for meaningful diff while ignoring
-        fields that always change
+    def _clean_manifest(cls, manifest_a: dict, manifest_b: dict) -> Tuple[dict, dict]:
+        """Clean two manifests before being compared. This removes fields that
+        change every reconcile
+
+        Returns:
+            Tuple[dict, dict]: The cleaned manifests
         """
         manifest_a = copy.deepcopy(manifest_a)
         manifest_b = copy.deepcopy(manifest_b)
@@ -668,6 +674,18 @@ class OpenshiftDeployManager(DeployManagerBase):
         ]:
             manifest_a.get("metadata", {}).pop(metadata_field, None)
             manifest_b.get("metadata", {}).pop(metadata_field, None)
+        return (manifest_a, manifest_b)
+
+    @classmethod
+    def _manifest_diff(cls, manifest_a, manifest_b) -> bool:
+        """Helper to compare two manifests for meaningful diff while ignoring
+        fields that always change.
+
+        Returns:
+            [bool, bool]: The first bool identifies if the resource changed while the
+        """
+
+        manifest_a, manifest_b = cls._clean_manifest(manifest_a, manifest_b)
 
         cls._strip_last_applied([manifest_b, manifest_a])
         diff = recursive_diff(
@@ -678,6 +696,51 @@ class OpenshiftDeployManager(DeployManagerBase):
         log.debug2("Found change? %s", change)
         log.debug3("A: %s", manifest_a)
         log.debug3("B: %s", manifest_b)
+        return change
+
+    @classmethod
+    def _retain_kubernetes_annotations(cls, current: dict, desired: dict) -> dict:
+        """Helper to update a desired manifest with certain annotations from the existing
+        resource. This stops other controllers from re-reconciling this resource
+
+        Returns:
+            dict: updated resource
+        """
+
+        identifiers = cls._get_resource_identifiers(desired)
+
+        for annotation, annotation_value in (
+            current.get("metadata", {}).get("annotations", {}).items()
+        ):
+            for cluster_annotation in config.cluster_passthrough_annotations:
+                if cluster_annotation in annotation and annotation not in desired[
+                    "metadata"
+                ].get("annotations", {}):
+                    log.debug4(
+                        "Retaining annotation %s for [%s/%s/%s]",
+                        annotation,
+                        identifiers.kind,
+                        identifiers.api_version,
+                        identifiers.name,
+                    )
+                    desired["metadata"].setdefault("annotations", {})[
+                        annotation
+                    ] = annotation_value
+        return desired
+
+    @classmethod
+    def _requires_replace(cls, manifest_a, manifest_b) -> bool:
+        """Helper to compare two manifests to see if they require
+        replace
+
+        Returns:
+            bool: If the resource requires a replace operation
+        """
+
+        manifest_a, manifest_b = cls._clean_manifest(manifest_a, manifest_b)
+
+        change = bool(requires_replace(manifest_a, manifest_b))
+        log.debug2("Requires Replace? %s", change)
         return change
 
     # Internal struct to hold the key resource identifier elements
@@ -704,6 +767,43 @@ class OpenshiftDeployManager(DeployManagerBase):
     ################
     ## Operations ##
     ################
+
+    def _replace_resource(self, resource_definition: dict) -> dict:
+        """Helper function to forcibly replace a resource on the cluster"""
+        # Get the key elements of the resource
+        res_id = self._get_resource_identifiers(resource_definition)
+        api_version = res_id.api_version
+        kind = res_id.kind
+        name = res_id.name
+        namespace = res_id.namespace
+
+        # Strip out managedFields to let the sever set them
+        resource_definition["metadata"]["managedFields"] = None
+
+        # Get the resource handle
+        log.debug2("Fetching resource handle [%s/%s]", api_version, kind)
+        resource_handle = self._get_resource_handle(api_version=api_version, kind=kind)
+        assert_cluster(
+            resource_handle,
+            (
+                "Failed to fetch resource handle for "
+                + f"{namespace}/{api_version}/{kind}"
+            ),
+        )
+
+        log.debug2(
+            "Attempting to put [%s/%s/%s] in %s",
+            api_version,
+            kind,
+            name,
+            namespace,
+        )
+        return resource_handle.replace(
+            resource_definition,
+            name=name,
+            namespace=namespace,
+            field_manager="oper8",
+        ).to_dict()
 
     def _apply_resource(self, resource_definition: dict) -> dict:
         """Helper function to apply a single resource to the cluster"""
@@ -743,47 +843,22 @@ class OpenshiftDeployManager(DeployManagerBase):
                 field_manager="oper8",
             ).to_dict()
         except ConflictError:
-            try:
-                log.debug(
-                    "Overriding field manager conflict for [%s/%s/%s] in %s ",
-                    api_version,
-                    kind,
-                    name,
-                    namespace,
-                )
-                return resource_handle.server_side_apply(
-                    resource_definition,
-                    name=name,
-                    namespace=namespace,
-                    field_manager="oper8",
-                    force_conflicts=True,
-                ).to_dict()
-            except UnprocessibleEntityError as err:
-                log.debug3("Caught 422 error: %s", err, exc_info=True)
-                if config.deploy_unprocessable_put_fallback:
-                    log.debug("Falling back to PUT on 422: %s", err)
-                    return resource_handle.replace(
-                        resource_definition,
-                        name=name,
-                        namespace=namespace,
-                        field_manager="oper8",
-                    ).to_dict()
-                else:
-                    raise
-        except UnprocessibleEntityError as err:
-            log.debug3("Caught 422 error: %s", err, exc_info=True)
-            if config.deploy_unprocessable_put_fallback:
-                log.debug("Falling back to PUT on 422: %s", err)
-                return resource_handle.replace(
-                    resource_definition,
-                    name=name,
-                    namespace=namespace,
-                    field_manager="oper8",
-                ).to_dict()
-            else:
-                raise
+            log.debug(
+                "Overriding field manager conflict for [%s/%s/%s] in %s ",
+                api_version,
+                kind,
+                name,
+                namespace,
+            )
+            return resource_handle.server_side_apply(
+                resource_definition,
+                name=name,
+                namespace=namespace,
+                field_manager="oper8",
+                force_conflicts=True,
+            ).to_dict()
 
-    def _apply(self, resource_definition):
+    def _apply(self, resource_definition, method: DeployMethod):
         """Apply a single resource to the cluster
 
         Args:
@@ -825,7 +900,43 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         # If there is meaningful change, apply this instance
         if changed:
-            apply_res = self._apply_resource(resource_definition)
+
+            resource_definition = self._retain_kubernetes_annotations(
+                current, resource_definition
+            )
+
+            req_replace = False
+            if method is DeployMethod.DEFAULT:
+                req_replace = self._requires_replace(current, resource_definition)
+
+            log.debug2(
+                "Attempting to deploy [%s/%s/%s] in %s with %s",
+                api_version,
+                kind,
+                name,
+                namespace,
+                method,
+            )
+            # If the resource requires a replace operation then use put. Otherwise use
+            # server side apply
+            if (
+                req_replace or method is DeployMethod.REPLACE
+            ) and method != DeployMethod.UPDATE:
+                apply_res = self._replace_resource(
+                    resource_definition,
+                )
+            else:
+                try:
+                    apply_res = self._apply_resource(resource_definition)
+                except UnprocessibleEntityError as err:
+                    log.debug3("Caught 422 error: %s", err, exc_info=True)
+                    if config.deploy_unprocessable_put_fallback:
+                        log.debug("Falling back to PUT on 422: %s", err)
+                        apply_res = self._replace_resource(
+                            resource_definition,
+                        )
+                    else:
+                        raise
 
             # Recompute the diff to determine if the apply actually caused a
             # meaningful change. This may have a different result than the check
