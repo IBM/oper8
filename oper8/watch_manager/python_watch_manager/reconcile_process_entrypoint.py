@@ -276,6 +276,12 @@ class ReconcileProcessEntrypoint:  # pylint: disable=too-few-public-methods
             result_pipe: Connection
                 The connection to send results back to
         """
+        # Set the logging library to utilize the multiprocessing logging queue. Do this before
+        # any logging messages are sent
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
+        handler = LogQueueHandler(logging_queue, request.resource)
+        root_logger.addHandler(handler)
 
         # Parse the request and setup local variables
         log.debug4("Setting up resource")
@@ -291,19 +297,6 @@ class ReconcileProcessEntrypoint:  # pylint: disable=too-few-public-methods
         log.debug4("Resetting signals")
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
-        # Set the logging library to utilize the multiprocessing logging queue
-        log.debug4("Getting root logger")
-        root_logger = logging.getLogger()
-        log.debug4(
-            "Resetting logging handlers (previously: %s)", len(root_logger.handlers)
-        )
-        root_logger.handlers.clear()
-
-        log.debug4("Creating LogQueueHandler")
-        handler = LogQueueHandler(logging_queue, resource)
-        log.debug4("Adding handler")
-        root_logger.addHandler(handler)
 
         # Replace stdout and stderr with a null stream as all messages should be passed via
         # the queue and any data in the buffer could cause the process to hang. This can
