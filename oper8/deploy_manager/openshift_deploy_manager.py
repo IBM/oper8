@@ -920,8 +920,10 @@ class OpenshiftDeployManager(DeployManagerBase):
             # If the resource requires a replace operation then use put. Otherwise use
             # server side apply
             if (
-                req_replace or method is DeployMethod.REPLACE
-            ) and method != DeployMethod.UPDATE:
+                (req_replace or method is DeployMethod.REPLACE)
+                and method != DeployMethod.UPDATE
+                and current != {}
+            ):
                 apply_res = self._replace_resource(
                     resource_definition,
                 )
