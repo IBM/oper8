@@ -222,6 +222,15 @@ def test_deploy_method_resource():
 
     dm._apply_resource = track_apply
 
+    # Use apply instead of replace when first deploying
+    success, changed = dm.deploy(
+        resource_definitions=make_obj_states(end_cluster_state),
+        method=DeployMethod.REPLACE,
+    )
+    assert success
+    assert changed
+    assert len(replace_called) == 0 and len(apply_called) == 1
+
     success, changed = dm.deploy(
         resource_definitions=make_obj_states(end_cluster_state),
         method=DeployMethod.REPLACE,
