@@ -197,11 +197,17 @@ def test_deploy_method_resource():
     """
     start_cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {}}}}
     end_cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {"bar": {}}}}}
+    replace_apply_resource = {
+        "kind": "Foo",
+        "apiVersion": "foo.bar.com/v1",
+        "metadata": {"name": "bar", "namespace": "test"},
+        "spec": {"some": "key_1"},
+    }
     end_apply_resource = {
         "kind": "Foo",
         "apiVersion": "foo.bar.com/v1",
         "metadata": {"name": "bar", "namespace": "test"},
-        "spec": {"some": "key"},
+        "spec": {"some": "key_2"},
     }
     dm = setup_testable_manager(cluster_state=start_cluster_state)
     dm._requires_replace = lambda *args, **kwargs: True
@@ -222,20 +228,29 @@ def test_deploy_method_resource():
 
     dm._apply_resource = track_apply
 
+    # Use apply instead of replace when first deploying
     success, changed = dm.deploy(
         resource_definitions=make_obj_states(end_cluster_state),
         method=DeployMethod.REPLACE,
     )
     assert success
     assert changed
-    assert len(replace_called) == 1 and len(apply_called) == 0
+    assert len(replace_called) == 0 and len(apply_called) == 1
+
+    success, changed = dm.deploy(
+        resource_definitions=[replace_apply_resource],
+        method=DeployMethod.REPLACE,
+    )
+    assert success
+    assert changed
+    assert len(replace_called) == 1 and len(apply_called) == 1
 
     success, changed = dm.deploy(
         resource_definitions=[end_apply_resource], method=DeployMethod.UPDATE
     )
     assert success
     assert changed
-    assert len(replace_called) == 1 and len(apply_called) == 1
+    assert len(replace_called) == 1 and len(apply_called) == 2
 
 
 def test_deploy_method_update_resource():
