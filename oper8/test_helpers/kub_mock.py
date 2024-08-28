@@ -791,9 +791,9 @@ class MockKubClient(kubernetes.client.ApiClient):
             content.update({"status": body.get("status", {})})
             updated_content = content
         else:
-            if "status" in content:
-                del content["status"]
-            updated_content = content
+            if "status" in body:
+                del body["status"]
+            updated_content = body
         log.debug3(
             "Updating [%s/%s/%s/%s] with body: %s",
             namespace,
@@ -832,6 +832,7 @@ class MockKubClient(kubernetes.client.ApiClient):
             name=name,
         )
         log.debug3("Current Content: %s", content)
+        log.debug3("Update body: %s", body)
 
         # If the content has a status code, unpack it
         status_code = 200
