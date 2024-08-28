@@ -238,7 +238,7 @@ def test_deploy_method_resource():
     assert len(replace_called) == 0 and len(apply_called) == 1
 
     success, changed = dm.deploy(
-        resource_definitions=[replace_apply_resource], 
+        resource_definitions=[replace_apply_resource],
         method=DeployMethod.REPLACE,
     )
     assert success
