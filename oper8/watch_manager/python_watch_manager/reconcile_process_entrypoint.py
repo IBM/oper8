@@ -262,27 +262,17 @@ class ReconcileProcessEntrypoint:  # pylint: disable=too-few-public-methods
 
     def start(
         self,
-        logging_queue: multiprocessing.Queue,
         request: ReconcileRequest,
         result_pipe: Connection,
     ):
         """Main entrypoint for the class
 
         Args:
-            logging_queue: multiprocessing.Queue
-                The queue to pass log messages to
             request: ReconcileRequest
                 The reconcile request that trigger this reconciliation
             result_pipe: Connection
                 The connection to send results back to
         """
-        # Set the logging library to utilize the multiprocessing logging queue. Do this before
-        # any logging messages are sent
-        root_logger = logging.getLogger()
-        root_logger.handlers.clear()
-        handler = LogQueueHandler(logging_queue, request.resource)
-        root_logger.addHandler(handler)
-
         # Parse the request and setup local variables
         log.debug4("Setting up resource")
         resource = request.resource
@@ -350,7 +340,6 @@ class ReconcileProcessEntrypoint:  # pylint: disable=too-few-public-methods
             log.debug3("Sending reconciliation result back to main process")
             result_pipe.send(reconcile_result)
             result_pipe.close()
-            logging_queue.close()
 
 
 def create_and_start_entrypoint(
@@ -371,11 +360,21 @@ def create_and_start_entrypoint(
             An optional DeployManager override
     """
     try:
+        # Set the logging library to utilize the multiprocessing logging queue. Do this before
+        # any logging messages are sent since that might cause a deadlock
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
+        handler = LogQueueHandler(logging_queue, request.resource)
+        root_logger.addHandler(handler)
+
         log.debug3("Creating entrypoint")
         entry = ReconcileProcessEntrypoint(
             request.controller_type, deploy_manager=deploy_manager
         )
         log.debug3("Starting entrypoint")
-        entry.start(logging_queue, request, result_pipe)
+        entry.start(request, result_pipe)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         log.error("Uncaught exception '%s'", exc, exc_info=True)
+
+    # Close the logging queue to ensure all messages are sent before process end
+    logging_queue.close()
