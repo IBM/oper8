@@ -366,7 +366,7 @@ def create_and_start_entrypoint(
         root_logger.handlers.clear()
         handler = LogQueueHandler(logging_queue, request.resource)
         root_logger.addHandler(handler)
-        
+
         log.debug3("Creating entrypoint")
         entry = ReconcileProcessEntrypoint(
             request.controller_type, deploy_manager=deploy_manager
@@ -375,6 +375,6 @@ def create_and_start_entrypoint(
         entry.start(request, result_pipe)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         log.error("Uncaught exception '%s'", exc, exc_info=True)
-    
+
     # Close the logging queue to ensure all messages are sent before process end
     logging_queue.close()
