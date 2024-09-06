@@ -82,6 +82,10 @@ python_watch_manager:
   heartbeat_file: null
   heartbeat_period: 30s
 
+  # Amount of times to retry a watch before exiting
+  watch_retry_count: 5
+  watch_retry_delay: 5s
+
   # watch filter used to reduce the amount of reconciles. The following
   # filters are available by default, or you can supply a custom filter via
   # the module.Filter notation.

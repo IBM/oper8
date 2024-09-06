@@ -84,3 +84,10 @@ class ThreadBase(threading.Thread):
             self.leadership_manager.acquire()
 
         return True
+
+    def wait_on_precondition(self, timeout: float) -> bool:
+        """Helper function to allow threads to wait for a certain period of time
+        only being interrupted for preconditions"""
+        self.shutdown.wait(timeout)
+
+        return self.check_preconditions()

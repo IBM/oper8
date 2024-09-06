@@ -6,6 +6,7 @@ from threading import Lock
 from typing import Dict, List, Optional, Set
 import copy
 import dataclasses
+import sys
 
 # Third Party
 from kubernetes import watch
@@ -14,6 +15,7 @@ from kubernetes import watch
 import alog
 
 # Local
+from .... import config
 from ....deploy_manager import DeployManagerBase, KubeEventType, KubeWatchEvent
 from ....managed_object import ManagedObject
 from ..filters import FilterManager, get_configured_filter
@@ -24,6 +26,7 @@ from ..utils import (
     ResourceId,
     WatchedResource,
     WatchRequest,
+    parse_time_delta,
 )
 from .base import ThreadBase
 
@@ -95,6 +98,12 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
         # Lock for adding/gathering watch requests
         self.watch_request_lock = Lock()
 
+        # Variables for tracking retries
+        self.attempts_left = config.python_watch_manager.watch_retry_count
+        self.retry_delay = parse_time_delta(
+            config.python_watch_manager.watch_retry_delay or ""
+        )
+
     def run(self):
         """The WatchThread's control loop continuously watches the DeployManager for any new
         events. For every event it gets it gathers all the WatchRequests whose `watched` value
@@ -106,60 +115,81 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
         # Check for leadership and shutdown at the start
         list_resource_version = 0
         while True:
-            if not self.check_preconditions():
-                log.debug("Checking preconditions failed. Shuting down")
-                return
-
-            for event in self.deploy_manager.watch_objects(
-                self.kind,
-                self.api_version,
-                namespace=self.namespace,
-                resource_version=list_resource_version,
-                watch_manager=self.kubernetes_watch,
-            ):
-                # Validate leadership on each event
+            try:
                 if not self.check_preconditions():
-                    log.debug("Checking preconditions failed. Shuting down")
+                    log.debug("Checking preconditions failed. Shutting down")
                     return
 
-                resource = event.resource
+                for event in self.deploy_manager.watch_objects(
+                    self.kind,
+                    self.api_version,
+                    namespace=self.namespace,
+                    resource_version=list_resource_version,
+                    watch_manager=self.kubernetes_watch,
+                ):
+                    # Validate leadership on each event
+                    if not self.check_preconditions():
+                        log.debug("Checking preconditions failed. Shutting down")
+                        return
 
-                # Gather all the watch requests which apply to this event
-                watch_requests = self._gather_resource_requests(resource)
-                if not watch_requests:
-                    log.debug2("Skipping resource without requested watch")
+                    resource = event.resource
+
+                    # Gather all the watch requests which apply to this event
+                    watch_requests = self._gather_resource_requests(resource)
+                    if not watch_requests:
+                        log.debug2("Skipping resource without requested watch")
+                        self._clean_event(event)
+                        continue
+
+                    # Ensure a watched object exists for every resource
+                    if resource.uid not in self.watched_resources:
+                        self._create_watched_resource(resource, watch_requests)
+
+                    # Check both global and watch specific filters
+                    watch_requests = self._check_filters(
+                        watch_requests, resource, event.type
+                    )
+                    if not watch_requests:
+                        log.debug2(
+                            "Skipping event %s as all requests failed filters", event
+                        )
+                        self._clean_event(event)
+                        continue
+
+                    # Push a reconcile request for each watch requested
+                    for watch_request in watch_requests:
+                        log.debug(
+                            "Requesting reconcile for %s",
+                            resource,
+                            extra={"resource": watch_request.requester.get_resource()},
+                        )
+                        self._request_reconcile(event, watch_request)
+
+                    # Clean up any resources used for the event
                     self._clean_event(event)
-                    continue
 
-                # Ensure a watched object exists for every resource
-                if resource.uid not in self.watched_resources:
-                    self._create_watched_resource(resource, watch_requests)
-
-                # Check both global and watch specific filters
-                watch_requests = self._check_filters(
-                    watch_requests, resource, event.type
+                # Update the resource version to only get new events
+                list_resource_version = self.kubernetes_watch.resource_version
+            except Exception as exc:
+                log.info(
+                    "Exception raised when attempting to watch %s",
+                    repr(exc),
+                    exc_info=exc,
                 )
-                if not watch_requests:
-                    log.debug2(
-                        "Skipping event %s as all requests failed filters", event
+                if self.attempts_left <= 0:
+                    log.error(
+                        "Unable to start watch within %d attempts",
+                        config.python_watch_manager.watch_retry_count,
                     )
-                    self._clean_event(event)
-                    continue
+                    sys.exit(1)
 
-                # Push a reconcile request for each watch requested
-                for watch_request in watch_requests:
+                if not self.wait_on_precondition(self.retry_delay.total_seconds()):
                     log.debug(
-                        "Requesting reconcile for %s",
-                        resource,
-                        extra={"resource": watch_request.requester.get_resource()},
+                        "Checking preconditions failed during retry. Shutting down"
                     )
-                    self._request_reconcile(event, watch_request)
-
-                # Clean up any resources used for the event
-                self._clean_event(event)
-
-            # Update the resource version to only get new events
-            list_resource_version = self.kubernetes_watch.resource_version
+                    return
+                self.attempts_left = self.attempts_left - 1
+                log.info("Restarting watch with %d attempts left", self.attempts_left)
 
     ## Class Interface ###################################################
 
