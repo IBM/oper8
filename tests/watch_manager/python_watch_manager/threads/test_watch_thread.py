@@ -2,6 +2,7 @@
 Tests for the WatchThread
 """
 # Standard
+from unittest.mock import patch
 import time
 
 # Third Party
@@ -10,7 +11,7 @@ import pytest
 # Local
 from oper8.deploy_manager.dry_run_deploy_manager import DryRunDeployManager
 from oper8.deploy_manager.kube_event import KubeEventType
-from oper8.test_helpers.helpers import library_config
+from oper8.test_helpers.helpers import MockDeployManager, library_config
 from oper8.test_helpers.pwm_helpers import (
     DisabledLeadershipManager,
     MockedReconcileThread,
@@ -378,3 +379,41 @@ def test_watch_thread_not_leader():
         time.sleep(1.5)
         watch_thread.stop_thread()
         assert mocked_reconcile_thread.requests.empty()
+
+
+@pytest.mark.timeout(5)
+def test_watch_thread_invalid_rbac():
+    dm = MockDeployManager(watch_raise=True)
+    watched_object = make_resource(spec={"test": "value"})
+    watched_object_id = ResourceId.from_resource(watched_object)
+
+    with patch(
+        "oper8.watch_manager.python_watch_manager.threads.watch.sys.exit",
+        side_effect=Exception("EndTest"),
+    ) as exit_mock:
+        with library_config(
+            python_watch_manager={
+                "filter": None,
+                "watch_retry_count": 3,
+                "watch_retry_delay": "0.1s",
+            }
+        ):
+            watch_thread = WatchThread(
+                reconcile_thread=None,
+                kind="Foo",
+                api_version="foo.bar.com/v1",
+                namespace="test",
+                deploy_manager=dm,
+            )
+            request = WatchRequest(
+                watched=watched_object_id, requester=watched_object_id
+            )
+            watch_thread.request_watch(request)
+            watch_thread.start_thread()
+
+            # Wait for the retries
+            time.sleep(1)
+
+            # Assert we tried to watch 4 times (3 retries plus the initial)
+            assert dm.watch_objects.call_count == 4
+            assert exit_mock.called

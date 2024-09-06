@@ -209,6 +209,8 @@ class MockDeployManager(DryRunDeployManager):
         disable_raise=False,
         get_state_fail=False,
         get_state_raise=False,
+        watch_fail=False,
+        watch_raise=False,
         generate_resource_version=True,
         set_status_fail=False,
         set_status_raise=False,
@@ -235,6 +237,7 @@ class MockDeployManager(DryRunDeployManager):
             resources, generate_resource_version=generate_resource_version, **kwargs
         )
 
+        self.watch_fail = "assert" if watch_raise else watch_fail
         self.deploy_fail = "assert" if deploy_raise else deploy_fail
         self.disable_fail = "assert" if disable_raise else disable_fail
         self.get_state_fail = "assert" if get_state_raise else get_state_fail
@@ -269,6 +272,9 @@ class MockDeployManager(DryRunDeployManager):
             side_effect=get_failable_method(
                 self.set_status_fail, super().set_status, (False, False)
             )
+        )
+        self.watch_objects = mock.Mock(
+            side_effect=get_failable_method(self.watch_fail, super().watch_objects, [])
         )
 
     def get_obj(self, kind, name, namespace=None, api_version=None):
