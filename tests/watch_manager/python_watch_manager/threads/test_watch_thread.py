@@ -33,11 +33,13 @@ from oper8.watch_manager.python_watch_manager.utils.types import (
 @pytest.mark.timeout(5)
 def test_watch_thread_happy_path():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     watched_object = make_resource(spec={"test": "value"})
     watched_object_id = ResourceId.from_resource(watched_object)
 
-    with library_config(python_watch_manager={"filter": None}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": None}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -67,11 +69,13 @@ def test_watch_thread_happy_path():
 @pytest.mark.timeout(5)
 def test_watch_thread_filtered():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     watched_object = make_resource(spec={"test": "value"})
     watched_object_id = ResourceId.from_resource(watched_object)
 
-    with library_config(python_watch_manager={"filter": DisableFilter}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": DisableFilter}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -100,11 +104,13 @@ def test_watch_thread_filtered():
 @pytest.mark.timeout(5)
 def test_watch_thread_deleted():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     watched_object = make_resource(spec={"test": "value"})
     watched_object_id = ResourceId.from_resource(watched_object)
 
-    with library_config(python_watch_manager={"filter": None}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": None}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -133,7 +139,6 @@ def test_watch_thread_deleted():
 @pytest.mark.timeout(5)
 def test_watch_thread_owner_watch():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     owner_object = make_resource(
         kind="DifferentKind", name="owner", spec={"test": "value"}
     )
@@ -146,7 +151,10 @@ def test_watch_thread_owner_watch():
     # Deploy owner before watch has started
     dm.deploy([owner_object])
 
-    with library_config(python_watch_manager={"filter": None}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": None}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -179,7 +187,6 @@ def test_watch_thread_owner_watch():
 @pytest.mark.timeout(5)
 def test_watch_thread_global_watch():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     owner_object = make_resource(
         kind="DifferentKind", name="owner", spec={"test": "value"}
     )
@@ -190,7 +197,10 @@ def test_watch_thread_global_watch():
 
     dm.deploy([owner_object])
 
-    with library_config(python_watch_manager={"filter": None}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": None}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -227,13 +237,15 @@ def test_watch_thread_global_watch():
 @pytest.mark.timeout(5)
 def test_watch_thread_all_events():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     watched_object = make_resource(spec={"test": "value"})
     request_resource_id = ResourceId(
         api_version=watched_object.get("apiVersion"), kind=watched_object.get("kind")
     )
 
-    with library_config(python_watch_manager={"filter": None}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": None}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -267,7 +279,6 @@ def test_watch_thread_all_events():
 @pytest.mark.timeout(5)
 def test_watch_thread_global_watch_two_owners():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     owner_object = make_resource(kind="OwnerKind", name="owner", spec={"test": "value"})
     owner_2_object = make_resource(
         kind="OwnerKind", name="owner2", spec={"test": "value"}
@@ -281,7 +292,10 @@ def test_watch_thread_global_watch_two_owners():
     dm.deploy([owner_object])
     dm.deploy([owner_2_object])
 
-    with library_config(python_watch_manager={"filter": None}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": None}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -330,10 +344,12 @@ def test_watch_thread_global_watch_two_owners():
 @pytest.mark.timeout(5)
 def test_watch_thread_no_watch():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     watched_object = make_resource(spec={"test": "value"})
 
-    with library_config(python_watch_manager={"filter": DisableFilter}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": DisableFilter}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             reconcile_thread=mocked_reconcile_thread,
             kind="Foo",
@@ -355,11 +371,13 @@ def test_watch_thread_no_watch():
 @pytest.mark.timeout(5)
 def test_watch_thread_not_leader():
     dm = DryRunDeployManager()
-    mocked_reconcile_thread = MockedReconcileThread()
     watched_object = make_resource(spec={"test": "value"})
     watched_object_id = ResourceId.from_resource(watched_object)
 
-    with library_config(python_watch_manager={"filter": None}):
+    with library_config(
+        python_watch_manager={"process_context": "fork", "filter": None}
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
         watch_thread = WatchThread(
             leadership_manager=DisabledLeadershipManager(),
             reconcile_thread=mocked_reconcile_thread,
@@ -390,30 +408,29 @@ def test_watch_thread_invalid_rbac():
     with patch(
         "oper8.watch_manager.python_watch_manager.threads.watch.sys.exit",
         side_effect=Exception("EndTest"),
-    ) as exit_mock:
-        with library_config(
-            python_watch_manager={
-                "filter": None,
-                "watch_retry_count": 3,
-                "watch_retry_delay": "0.1s",
-            }
-        ):
-            watch_thread = WatchThread(
-                reconcile_thread=None,
-                kind="Foo",
-                api_version="foo.bar.com/v1",
-                namespace="test",
-                deploy_manager=dm,
-            )
-            request = WatchRequest(
-                watched=watched_object_id, requester=watched_object_id
-            )
-            watch_thread.request_watch(request)
-            watch_thread.start_thread()
+    ) as exit_mock, library_config(
+        python_watch_manager={
+            "process_context": "fork",
+            "filter": None,
+            "watch_retry_count": 3,
+            "watch_retry_delay": "0.1s",
+        }
+    ):
+        mocked_reconcile_thread = MockedReconcileThread()
+        watch_thread = WatchThread(
+            reconcile_thread=mocked_reconcile_thread,
+            kind="Foo",
+            api_version="foo.bar.com/v1",
+            namespace="test",
+            deploy_manager=dm,
+        )
+        request = WatchRequest(watched=watched_object_id, requester=watched_object_id)
+        watch_thread.request_watch(request)
+        watch_thread.start_thread()
 
-            # Wait for the retries
-            time.sleep(1)
+        # Wait for the retries
+        time.sleep(1)
 
-            # Assert we tried to watch 4 times (3 retries plus the initial)
-            assert dm.watch_objects.call_count == 4
-            assert exit_mock.called
+        # Assert we tried to watch 4 times (3 retries plus the initial)
+        assert dm.watch_objects.call_count == 4
+        assert exit_mock.called

@@ -101,7 +101,7 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
         # Variables for tracking retries
         self.attempts_left = config.python_watch_manager.watch_retry_count
         self.retry_delay = parse_time_delta(
-            config.python_watch_manager.watch_retry_delay
+            config.python_watch_manager.watch_retry_delay or ""
         )
 
     def run(self):
