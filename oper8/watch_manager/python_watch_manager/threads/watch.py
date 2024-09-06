@@ -115,11 +115,11 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
         # Check for leadership and shutdown at the start
         list_resource_version = 0
         while True:
-            if not self.check_preconditions():
-                log.debug("Checking preconditions failed. Shuting down")
-                return
-
             try:
+                if not self.check_preconditions():
+                    log.debug("Checking preconditions failed. Shutting down")
+                    return
+
                 for event in self.deploy_manager.watch_objects(
                     self.kind,
                     self.api_version,
@@ -129,7 +129,7 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
                 ):
                     # Validate leadership on each event
                     if not self.check_preconditions():
-                        log.debug("Checking preconditions failed. Shuting down")
+                        log.debug("Checking preconditions failed. Shutting down")
                         return
 
                     resource = event.resource
@@ -183,7 +183,11 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
                     )
                     sys.exit(1)
 
-                self.wait_on_precondition(self.retry_delay.total_seconds())
+                if not self.wait_on_precondition(self.retry_delay.total_seconds()):
+                    log.debug(
+                        "Checking preconditions failed during retry. Shutting down"
+                    )
+                    return
                 self.attempts_left = self.attempts_left - 1
                 log.info("Restarting watch with %d attempts left", self.attempts_left)
 
