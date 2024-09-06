@@ -400,6 +400,7 @@ def test_watch_thread_not_leader():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
 def test_watch_thread_invalid_rbac():
     dm = MockDeployManager(watch_raise=True)
     watched_object = make_resource(spec={"test": "value"})
@@ -424,6 +425,7 @@ def test_watch_thread_invalid_rbac():
             namespace="test",
             deploy_manager=dm,
         )
+        
         request = WatchRequest(watched=watched_object_id, requester=watched_object_id)
         watch_thread.request_watch(request)
         watch_thread.start_thread()
