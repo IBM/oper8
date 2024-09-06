@@ -425,7 +425,7 @@ def test_watch_thread_invalid_rbac():
             namespace="test",
             deploy_manager=dm,
         )
-        
+
         request = WatchRequest(watched=watched_object_id, requester=watched_object_id)
         watch_thread.request_watch(request)
         watch_thread.start_thread()
