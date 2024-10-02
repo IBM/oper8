@@ -408,6 +408,11 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             cr_manifest: aconfig.Config
                 The cr manifest to pull the requested version from.
         """
+        # If vcs still has  not created then create it here. This
+        # is mainly used by tests
+        if not self.vcs:
+            self.vcs = VCS(self.home_dir)
+
         version = get_manifest_version(cr_manifest)
         if not version:
             raise ValueError("CR Manifest has no version")
@@ -630,7 +635,11 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         )
 
         # If VCS is enabled ensure the branch or tag exists
-        if self.vcs:
+        if self.enable_vcs:
+            # If vcs is not created then create it here
+            if not self.vcs:
+                self.vcs = VCS(self.home_dir)
+
             repo_versions = self.vcs.list_refs()
             assert_config(
                 version in repo_versions,
