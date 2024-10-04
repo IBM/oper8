@@ -6,7 +6,7 @@ from threading import Lock
 from typing import Dict, List, Optional, Set
 import copy
 import dataclasses
-import sys
+import os
 
 # Third Party
 from kubernetes import watch
@@ -181,7 +181,7 @@ class WatchThread(ThreadBase):  # pylint: disable=too-many-instance-attributes
                         "Unable to start watch within %d attempts",
                         config.python_watch_manager.watch_retry_count,
                     )
-                    sys.exit(1)
+                    os._exit(1)
 
                 if not self.wait_on_precondition(self.retry_delay.total_seconds()):
                     log.debug(

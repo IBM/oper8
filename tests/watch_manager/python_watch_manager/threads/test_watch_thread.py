@@ -407,7 +407,7 @@ def test_watch_thread_invalid_rbac():
     watched_object_id = ResourceId.from_resource(watched_object)
 
     with patch(
-        "oper8.watch_manager.python_watch_manager.threads.watch.sys.exit",
+        "oper8.watch_manager.python_watch_manager.threads.watch.os._exit",
         side_effect=Exception("EndTest"),
     ) as exit_mock, library_config(
         python_watch_manager={
