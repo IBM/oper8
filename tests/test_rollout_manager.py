@@ -254,6 +254,50 @@ class TestRolloutManager:
         assert not comp_c.deploy_completed()
         assert not comp_c.verify_completed()
 
+    def test_failed_deploy_callbacks(self):
+        """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
+        and after_verify_unsuccessful hooks are executed when deploy is incomplete."""
+        session = setup_session()
+
+        # Set up a linear set of components and configure the second-to-last to
+        # fail during deploy.
+        #
+        #    A -> B -x C
+        comp_a = DummyRolloutComponent("A")(session)
+        comp_b = DummyRolloutComponent("B")(session, deploy_fail=RuntimeError)
+        comp_c = DummyRolloutComponent("C")(session)
+        comps = [comp_a, comp_b, comp_c]
+        for i, comp in enumerate(comps[1:]):
+            session.add_component_dependency(comp, comps[i])
+
+        # Setup callbacks.
+        # TODO add after verify unsuccessful callback.
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+
+        # Create the rollout manager and run the rollout
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+        )
+        mgr.rollout()
+
+        # Make sure the right set of phases were hit
+        assert comp_a.deploy_completed()
+        assert not comp_a.verify_completed()
+        assert not comp_b.deploy_completed()
+        assert not comp_b.verify_completed()
+        assert not comp_c.deploy_completed()
+        assert not comp_c.verify_completed()
+
+        # Check the callbacks.
+        assert not after_deploy.called
+        assert after_deploy_unsuccessful.called
+        assert not after_verify.called
+
     def test_rollout_verify_incomplete(self):
         """Test that a failed verify test is handled properly as not a failure,
         but also not a completion
