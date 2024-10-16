@@ -160,7 +160,7 @@ def make_application_status(  # pylint: disable=too-many-arguments,too-many-loca
         operator_version:  Optional[str]
             The operator version for this application
         kind: Optional[str]
-            The kind of reconciliing CR. If specified, this function adds
+            The kind of reconciling CR. If specified, this function adds
             service status field which is compliant with IBM Cloud Pak
             requirements.
 
