@@ -159,6 +159,7 @@ class RolloutManager:
         after_deploy: Optional[Callable[[Session], bool]] = None,
         after_deploy_unsuccessful: Optional[Callable[[Session], bool]] = None,
         after_verify: Optional[Callable[[Session], bool]] = None,
+        after_verify_unsuccessful: Optional[Callable[[Session], bool]] = None,
     ):
         """Construct with the fully-populated session for the rollout
 
@@ -169,15 +170,24 @@ class RolloutManager:
                 An optional callback hook that will be invoked after the deploy
                 phase completes. The return indicates whether the validation has
                 passed.
+            after_deploy_unsuccessful:  Optional[Callable[[Session] bool]]
+                An optional callback hook that will be invoked after the deploy
+                phase ends with incomplete or failed status. The return indicates
+                whether the validation has passed.
             after_verify:  Optional[Callable[[Session] None]]
                 An optional callback hook that will be invoked after the verify
                 phase completes. The return indicates whether the validation has
                 passed.
+            after_verify_unsuccessful:  Optional[Callable[[Session] None]]
+                An optional callback hook that will be invoked after the verify
+                phase ends with failure. The return indicates whether the validation
+                has passed.
         """
         self._session = session
         self._after_deploy = after_deploy
         self._after_deploy_unsuccessful = after_deploy_unsuccessful
         self._after_verify = after_verify
+        self._after_verify_unsuccessful = after_verify_unsuccessful
 
         # Read pool size from config
         deploy_threads = config.rollout_manager.deploy_threads
@@ -416,17 +426,33 @@ class RolloutManager:
         ## Phase 4: After Verify ##
         ###########################
 
-        # TODO after unsuccessful verify
         phase4_complete = phase3_complete
         phase4_exception = None
+
+        # If deployment is completed, but verification is not, run _after_verify_unsuccessful.
+        if (
+            phase1_complete and not phase3_complete
+        ) and self._after_verify_unsuccessful:
+            log.debug("Running after-verify-unsuccessful")
+            try:
+                is_after_verify_unsuccessful_completed = (
+                    self._after_verify_unsuccessful(self._session)
+                )
+                if not is_after_verify_unsuccessful_completed:
+                    phase4_exception = VerificationError(
+                        "After-verify-unsuccessful failed"
+                    )
+            except Exception as err:  # pylint: disable=broad-except
+                log.debug2("Error caught during after-verify: %s", err, exc_info=True)
+                phase4_exception = err
+
+        # If both deployment and verification is completed, run _after_verify.
         if phase3_complete and self._after_verify:
             log.debug("Running after-verify")
             try:
                 phase4_complete = self._after_verify(self._session)
                 if not phase4_complete:
-                    phase4_exception = VerificationError(
-                        "Application verification incomplete"
-                    )
+                    phase4_exception = VerificationError("After-verify failed")
             except Exception as err:  # pylint: disable=broad-except
                 log.debug2("Error caught during after-verify: %s", err, exc_info=True)
                 phase4_complete = False

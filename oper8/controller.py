@@ -203,6 +203,22 @@ class Controller(abc.ABC):
         """
         return True
 
+    def after_verify_unsuccessful(self, session: Session) -> bool:
+        """This allows children to inject logic that will run when the
+        controller has finished deploying all components but failed to verify.
+        The default behavior is a no-op.
+
+        Args:
+            session:  Session
+                The current reconciliation session
+
+        Returns:
+            success:  bool
+                True if custom hook code executed successfully and lifecycle
+                should continue
+        """
+        return True
+
     def should_requeue(self, session: Session) -> Tuple[bool, Optional[RequeueParams]]:
         """should_requeue determines if current reconcile request should be re-queued.
 
