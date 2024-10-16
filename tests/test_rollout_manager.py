@@ -202,8 +202,12 @@ class TestRolloutManager:
         # Create the rollout manager and run the rollout
         after_deploy = mock.Mock(return_value=True)
         after_verify = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
         mgr = RolloutManager(
-            session, after_deploy=after_deploy, after_verify=after_verify
+            session,
+            after_deploy=after_deploy,
+            after_verify=after_verify,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
         )
         completion_state = mgr.rollout()
         log.debug2(completion_state)
@@ -212,8 +216,11 @@ class TestRolloutManager:
         # forward states
         assert completion_state.deploy_completed()
         assert completion_state.verify_completed()
+
+        # Check callbacks.
         assert not completion_state.failed()
         assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
         assert after_verify.called
 
     #####################
