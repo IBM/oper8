@@ -257,7 +257,7 @@ class TestRolloutManager:
         assert not comp_c.deploy_completed()
         assert not comp_c.verify_completed()
 
-    def test_failed_deploy_callbacks(self):
+    def test_rollout_deploy_incomplete(self):
         """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
         and after_verify_unsuccessful hooks are executed when deploy is incomplete."""
         session = setup_session()
@@ -274,10 +274,10 @@ class TestRolloutManager:
             session.add_component_dependency(comp, comps[i])
 
         # Setup callbacks.
-        # TODO add after verify unsuccessful callback.
         after_deploy = mock.Mock(return_value=True)
         after_deploy_unsuccessful = mock.Mock(return_value=True)
         after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
 
         # Create the rollout manager and run the rollout
         mgr = RolloutManager(
@@ -285,6 +285,7 @@ class TestRolloutManager:
             after_deploy=after_deploy,
             after_deploy_unsuccessful=after_deploy_unsuccessful,
             after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
         )
         mgr.rollout()
 
@@ -300,6 +301,7 @@ class TestRolloutManager:
         assert not after_deploy.called
         assert after_deploy_unsuccessful.called
         assert not after_verify.called
+        assert not after_verify_unsuccessful.called
 
     def test_rollout_verify_incomplete(self):
         """Test that a failed verify test is handled properly as not a failure,
