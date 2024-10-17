@@ -376,6 +376,11 @@ class TestRolloutManager:
         for i, comp in enumerate(comps[1:]):
             session.add_component_dependency(comp, comps[i])
 
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
         # Create the rollout manager and run the rollout
         #
         # NOTE: An unexpected exception in verify is considered a failed node,
@@ -385,7 +390,13 @@ class TestRolloutManager:
         #   unexpected failures in verify as identical to programmatic False
         #   return values which feels too loose. Ultimately, this shouldn't
         #   happen!
-        mgr = RolloutManager(session)
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
         completion_state = mgr.rollout()
         assert not completion_state.deploy_completed()
         assert not completion_state.verify_completed()
@@ -399,6 +410,12 @@ class TestRolloutManager:
         assert comp_a.verify_completed()
         assert not comp_b.verify_completed()
         assert not comp_c.verify_completed()
+
+        # Check callbacks.
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert after_verify_unsuccessful.called
 
         # Make sure the completion state looks right
         assert completion_state == CompletionState(
