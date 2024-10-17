@@ -323,6 +323,7 @@ class TestRolloutManager:
         after_deploy = mock.Mock(return_value=True)
         after_deploy_unsuccessful = mock.Mock(return_value=True)
         after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
 
         # Create the rollout manager and run the rollout
         mgr = RolloutManager(
@@ -330,6 +331,7 @@ class TestRolloutManager:
             after_deploy=after_deploy,
             after_deploy_unsuccessful=after_deploy_unsuccessful,
             after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
         )
         completion_state = mgr.rollout()
         assert completion_state.deploy_completed()
@@ -349,6 +351,7 @@ class TestRolloutManager:
         assert after_deploy.called
         assert not after_deploy_unsuccessful.called
         assert not after_verify.called
+        assert after_verify_unsuccessful.called
 
         # Make sure the completion state looks right
         assert completion_state == CompletionState(
