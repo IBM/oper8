@@ -431,7 +431,7 @@ class RolloutManager:
 
         # If deployment is completed, but verification is not, run _after_verify_unsuccessful.
         if (
-            phase1_complete and not phase3_complete
+            phase1_complete and phase2_complete and not phase3_complete
         ) and self._after_verify_unsuccessful:
             log.debug("Running after-verify-unsuccessful")
             try:
