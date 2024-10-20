@@ -436,7 +436,7 @@ class RolloutManager:
             log.debug("Running after-verify-unsuccessful")
             try:
                 is_after_verify_unsuccessful_completed = (
-                    self._after_verify_unsuccessful(self._session)
+                    self._after_verify_unsuccessful(self._session, phase3_failed)
                 )
                 if not is_after_verify_unsuccessful_completed:
                     phase4_exception = VerificationError(
