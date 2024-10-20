@@ -211,6 +211,8 @@ class Controller(abc.ABC):
         Args:
             session:  Session
                 The current reconciliation session
+            failed:  bool
+                Indicator of whether or not the termination was a failure
 
         Returns:
             success:  bool
