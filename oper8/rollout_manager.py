@@ -326,7 +326,7 @@ class RolloutManager:
             log.debug2("Running after-deploy-unsuccessful")
             try:
                 is_after_deploy_unsuccessful_completed = (
-                    self._after_deploy_unsuccessful(self._session)
+                    self._after_deploy_unsuccessful(self._session, phase1_failed)
                 )
                 if not is_after_deploy_unsuccessful_completed:
                     phase2_exception = VerificationError(
