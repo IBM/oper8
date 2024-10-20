@@ -203,7 +203,7 @@ class Controller(abc.ABC):
         """
         return True
 
-    def after_verify_unsuccessful(self, session: Session) -> bool:
+    def after_verify_unsuccessful(self, session: Session, failed: bool) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished deploying all components but failed to verify.
         The default behavior is a no-op.
