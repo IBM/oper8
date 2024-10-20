@@ -168,7 +168,7 @@ class Controller(abc.ABC):
         """
         return True
 
-    def after_deploy_unsuccessful(self, session: Session) -> bool:
+    def after_deploy_unsuccessful(self, session: Session, failed: bool) -> bool:
         """This allows children to inject logic that will run when the
         controller has failed or could not finish deploying all components.
         The default behavior is a no-op.
