@@ -201,9 +201,15 @@ class TestRolloutManager:
 
         # Create the rollout manager and run the rollout
         after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
         after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
         mgr = RolloutManager(
-            session, after_deploy=after_deploy, after_verify=after_verify
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
         )
         completion_state = mgr.rollout()
         log.debug2(completion_state)
@@ -212,9 +218,13 @@ class TestRolloutManager:
         # forward states
         assert completion_state.deploy_completed()
         assert completion_state.verify_completed()
+
+        # Check callbacks.
         assert not completion_state.failed()
         assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
         assert after_verify.called
+        assert not after_verify_unsuccessful.called
 
     #####################
     ## Rollout Failure ##
@@ -235,8 +245,20 @@ class TestRolloutManager:
         for i, comp in enumerate(comps[1:]):
             session.add_component_dependency(comp, comps[i])
 
+        # Setup callbacks.
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
         # Create the rollout manager and run the rollout
-        mgr = RolloutManager(session)
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
         mgr.rollout()
 
         # Make sure the right set of phases were hit
@@ -246,6 +268,58 @@ class TestRolloutManager:
         assert not comp_b.verify_completed()
         assert not comp_c.deploy_completed()
         assert not comp_c.verify_completed()
+
+        # Check callbacks.
+        assert not after_deploy.called
+        assert after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert not after_verify_unsuccessful.called
+
+    def test_rollout_deploy_incomplete(self):
+        """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
+        and after_verify_unsuccessful hooks are executed when deploy is incomplete."""
+        session = setup_session()
+
+        # Set up a linear set of components and configure the second-to-last to
+        # fail during deploy.
+        #
+        #    A -> B -x C
+        comp_a = DummyRolloutComponent("A")(session)
+        comp_b = DummyRolloutComponent("B")(session, deploy_fail=RuntimeError)
+        comp_c = DummyRolloutComponent("C")(session)
+        comps = [comp_a, comp_b, comp_c]
+        for i, comp in enumerate(comps[1:]):
+            session.add_component_dependency(comp, comps[i])
+
+        # Setup callbacks.
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        # Create the rollout manager and run the rollout
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+        mgr.rollout()
+
+        # Make sure the right set of phases were hit
+        assert comp_a.deploy_completed()
+        assert not comp_a.verify_completed()
+        assert not comp_b.deploy_completed()
+        assert not comp_b.verify_completed()
+        assert not comp_c.deploy_completed()
+        assert not comp_c.verify_completed()
+
+        # Check the callbacks.
+        assert not after_deploy.called
+        assert after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert not after_verify_unsuccessful.called
 
     def test_rollout_verify_incomplete(self):
         """Test that a failed verify test is handled properly as not a failure,
@@ -264,8 +338,19 @@ class TestRolloutManager:
         for i, comp in enumerate(comps[1:]):
             session.add_component_dependency(comp, comps[i])
 
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
         # Create the rollout manager and run the rollout
-        mgr = RolloutManager(session)
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
         completion_state = mgr.rollout()
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
@@ -279,6 +364,12 @@ class TestRolloutManager:
         assert comp_a.verify_completed()
         assert not comp_b.verify_completed()
         assert not comp_c.verify_completed()
+
+        # Check the callbacks.
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert after_verify_unsuccessful.called
 
         # Make sure the completion state looks right
         assert completion_state == CompletionState(
@@ -303,6 +394,11 @@ class TestRolloutManager:
         for i, comp in enumerate(comps[1:]):
             session.add_component_dependency(comp, comps[i])
 
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
         # Create the rollout manager and run the rollout
         #
         # NOTE: An unexpected exception in verify is considered a failed node,
@@ -312,7 +408,13 @@ class TestRolloutManager:
         #   unexpected failures in verify as identical to programmatic False
         #   return values which feels too loose. Ultimately, this shouldn't
         #   happen!
-        mgr = RolloutManager(session)
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
         completion_state = mgr.rollout()
         assert not completion_state.deploy_completed()
         assert not completion_state.verify_completed()
@@ -326,6 +428,12 @@ class TestRolloutManager:
         assert comp_a.verify_completed()
         assert not comp_b.verify_completed()
         assert not comp_c.verify_completed()
+
+        # Check callbacks.
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert after_verify_unsuccessful.called
 
         # Make sure the completion state looks right
         assert completion_state == CompletionState(
@@ -341,14 +449,31 @@ class TestRolloutManager:
         """
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
         after_deploy = mock.Mock(return_value=False)
-        mgr = RolloutManager(session, after_deploy=after_deploy)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
         completion_state = mgr.rollout()
         log.debug2(completion_state)
+
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert not completion_state.failed()
+
         assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, VerificationError)
 
     def test_after_deploy_non_oper8_error(self):
@@ -361,14 +486,31 @@ class TestRolloutManager:
 
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
         after_deploy = mock.Mock(side_effect=fail)
-        mgr = RolloutManager(session, after_deploy=after_deploy)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
         completion_state = mgr.rollout()
         log.debug2(completion_state)
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert completion_state.failed()
+
         assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, RuntimeError)
 
     def test_after_deploy_fatal_error(self):
@@ -381,14 +523,31 @@ class TestRolloutManager:
 
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
         after_deploy = mock.Mock(side_effect=fail)
-        mgr = RolloutManager(session, after_deploy=after_deploy)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
         completion_state = mgr.rollout()
         log.debug2(completion_state)
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert completion_state.failed()
+
         assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, ClusterError)
 
     def test_after_deploy_non_fatal_error(self):
@@ -401,14 +560,31 @@ class TestRolloutManager:
 
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
         after_deploy = mock.Mock(side_effect=fail)
-        mgr = RolloutManager(session, after_deploy=after_deploy)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
         completion_state = mgr.rollout()
         log.debug2(completion_state)
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert not completion_state.failed()
+
         assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, PreconditionError)
 
     def test_after_verify_false(self):
@@ -417,14 +593,31 @@ class TestRolloutManager:
         """
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
         after_verify = mock.Mock(return_value=False)
-        mgr = RolloutManager(session, after_verify=after_verify)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
         completion_state = mgr.rollout()
         log.debug2(completion_state)
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert not completion_state.failed()
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
         assert after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, VerificationError)
 
     def test_after_verify_non_oper8_error(self):
@@ -437,14 +630,31 @@ class TestRolloutManager:
 
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
         after_verify = mock.Mock(side_effect=fail)
-        mgr = RolloutManager(session, after_verify=after_verify)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
         completion_state = mgr.rollout()
         log.debug2(completion_state)
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert completion_state.failed()
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
         assert after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, RuntimeError)
 
     def test_after_verify_fatal_error(self):
@@ -457,14 +667,30 @@ class TestRolloutManager:
 
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
         after_verify = mock.Mock(side_effect=fail)
-        mgr = RolloutManager(session, after_verify=after_verify)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
         completion_state = mgr.rollout()
         log.debug2(completion_state)
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert completion_state.failed()
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
         assert after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, ClusterError)
 
     def test_after_verify_non_fatal_error(self):
@@ -477,12 +703,29 @@ class TestRolloutManager:
 
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
         after_verify = mock.Mock(side_effect=fail)
-        mgr = RolloutManager(session, after_verify=after_verify)
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
         completion_state = mgr.rollout()
         log.debug2(completion_state)
         assert completion_state.deploy_completed()
         assert not completion_state.verify_completed()
         assert not completion_state.failed()
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
         assert after_verify.called
+        assert not after_verify_unsuccessful.called
+
         assert isinstance(completion_state.exception, PreconditionError)

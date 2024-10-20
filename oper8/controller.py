@@ -168,6 +168,24 @@ class Controller(abc.ABC):
         """
         return True
 
+    def after_deploy_unsuccessful(self, session: Session, failed: bool) -> bool:
+        """This allows children to inject logic that will run when the
+        controller has failed or could not finish deploying all components.
+        The default behavior is a no-op.
+
+        Args:
+            session:  Session
+                The current reconciliation session
+            failed:  bool
+                Indicator of whether or not the termination was a failure
+
+        Returns:
+            success:  bool
+                True if custom hook code executed successfully and lifecycle
+                should continue
+        """
+        return True
+
     def after_verify(
         self,
         session: Session,  # pylint: disable=unused-argument
@@ -179,6 +197,24 @@ class Controller(abc.ABC):
         Args:
             session:  Session
                 The current reconciliation session
+
+        Returns:
+            success:  bool
+                True if custom hook code executed successfully and lifecycle
+                should continue
+        """
+        return True
+
+    def after_verify_unsuccessful(self, session: Session, failed: bool) -> bool:
+        """This allows children to inject logic that will run when the
+        controller has finished deploying all components but failed to verify.
+        The default behavior is a no-op.
+
+        Args:
+            session:  Session
+                The current reconciliation session
+            failed:  bool
+                Indicator of whether or not the termination was a failure
 
         Returns:
             success:  bool

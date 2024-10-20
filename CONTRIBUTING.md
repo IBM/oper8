@@ -91,6 +91,71 @@ If the contributed code is not third-party code and you are the author we strong
 
 Please make sure to read and observe our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
+# Development environment setup
+
+## Git setup
+
+First, fork the repository & clone it.
+
+Open the cloned repository, and add [the original repository](https://github.com/IBM/oper8) as the upstream.
+
+```bash
+git remote add upstream git@github.com:IBM/oper8.git
+```
+
+Make sure that your forked repository is up-to-date compared to the original repository.
+
+```bash
+git fetch upstream
+```
+
+Merge the latest upstream into your forked main branch if needed.
+
+```bash
+git merge upstream/main
+```
+
+Once you have the latest code, create a new branch from it and write your codes.
+
+```bash
+git checkout -b <branch_name>
+```
+
+## Python setup
+
+This repository uses [tox](https://tox.wiki/en/latest/index.html) to manage the python development environment. To setup the environment, run the following commands.
+
+Install `tox`.
+
+```bash
+pip install tox
+```
+
+Run `tox` to create a virtual environment based on `tox.ini`.
+
+```bash
+tox
+```
+
+To run tests written in `tests` directory, run `tox -e py<version>`. For example,
+
+```bash
+# Run tests with python 3.12.
+tox -e py312
+```
+
+To only test the specific file such as `tests/test_rollout_manager.py`,
+
+```bash
+tox -e py312 -- tests/test_rollout_manager.py
+```
+
+To format and lint the codes,
+
+```bash
+tox -e fmt,lint
+```
+
 # Your First Contribution
 
 Would you like to help drive the community forward? We will help you understand the organization of the project and direct you to the best places to get started. You'll be able to pick up issues, write code to fix them, and get your work reviewed and merged.
