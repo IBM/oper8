@@ -157,7 +157,9 @@ class RolloutManager:
         self,
         session: Session,
         after_deploy: Optional[Callable[[Session], bool]] = None,
+        after_deploy_unsuccessful: Optional[Callable[[Session], bool]] = None,
         after_verify: Optional[Callable[[Session], bool]] = None,
+        after_verify_unsuccessful: Optional[Callable[[Session], bool]] = None,
     ):
         """Construct with the fully-populated session for the rollout
 
@@ -168,14 +170,24 @@ class RolloutManager:
                 An optional callback hook that will be invoked after the deploy
                 phase completes. The return indicates whether the validation has
                 passed.
+            after_deploy_unsuccessful:  Optional[Callable[[Session] bool]]
+                An optional callback hook that will be invoked after the deploy
+                phase ends with incomplete or failed status. The return indicates
+                whether the validation has passed.
             after_verify:  Optional[Callable[[Session] None]]
                 An optional callback hook that will be invoked after the verify
                 phase completes. The return indicates whether the validation has
                 passed.
+            after_verify_unsuccessful:  Optional[Callable[[Session] None]]
+                An optional callback hook that will be invoked after the verify
+                phase ends with failure. The return indicates whether the validation
+                has passed.
         """
         self._session = session
         self._after_deploy = after_deploy
+        self._after_deploy_unsuccessful = after_deploy_unsuccessful
         self._after_verify = after_verify
+        self._after_verify_unsuccessful = after_verify_unsuccessful
 
         # Read pool size from config
         deploy_threads = config.rollout_manager.deploy_threads
@@ -295,9 +307,11 @@ class RolloutManager:
         phase1_failed = deploy_completion_state.failed()
         log.debug(
             "[Phase 1] Deploy result: %s",
-            "SUCCESS"
-            if phase1_complete
-            else ("FAILED" if phase1_failed else "INCOMPLETE"),
+            (
+                "SUCCESS"
+                if phase1_complete
+                else ("FAILED" if phase1_failed else "INCOMPLETE")
+            ),
         )
 
         ###########################
@@ -306,6 +320,27 @@ class RolloutManager:
 
         phase2_complete = phase1_complete
         phase2_exception = None
+
+        # After unsuccessful deploy.
+        if (not phase1_complete or phase1_failed) and self._after_deploy_unsuccessful:
+            log.debug2("Running after-deploy-unsuccessful")
+            try:
+                is_after_deploy_unsuccessful_completed = (
+                    self._after_deploy_unsuccessful(self._session, phase1_failed)
+                )
+                if not is_after_deploy_unsuccessful_completed:
+                    phase2_exception = VerificationError(
+                        "After-deploy-unsuccessful verification failed"
+                    )
+            except Exception as err:  # pylint: disable=broad-except
+                log.debug2(
+                    "Error caught during after-deploy-unsuccessful: %s",
+                    err,
+                    exc_info=True,
+                )
+                phase2_exception = err
+
+        # After successful deploy.
         if phase1_complete and self._after_deploy:
             log.debug2("Running after-deploy")
             try:
@@ -322,9 +357,11 @@ class RolloutManager:
         # Log phase 2 results
         log.debug(
             "[Phase 2] After deploy result: %s",
-            "SUCCESS"
-            if phase2_complete
-            else ("FAILED" if phase2_exception else "NOT RUN"),
+            (
+                "SUCCESS"
+                if phase2_complete
+                else ("FAILED" if phase2_exception else "NOT RUN")
+            ),
         )
 
         ###########################
@@ -374,12 +411,14 @@ class RolloutManager:
         # Log phase 3 results
         log.debug(
             "[Phase 3] Verify result: %s",
-            "SUCCESS"
-            if phase3_complete
-            else (
-                "FAILED"
-                if phase3_failed
-                else ("INCOMPLETE" if phase2_complete else "NOT RUN")
+            (
+                "SUCCESS"
+                if phase3_complete
+                else (
+                    "FAILED"
+                    if phase3_failed
+                    else ("INCOMPLETE" if phase2_complete else "NOT RUN")
+                )
             ),
         )
 
@@ -389,14 +428,31 @@ class RolloutManager:
 
         phase4_complete = phase3_complete
         phase4_exception = None
+
+        # If deployment is completed, but verification is not, run _after_verify_unsuccessful.
+        if (
+            phase1_complete and phase2_complete and not phase3_complete
+        ) and self._after_verify_unsuccessful:
+            log.debug("Running after-verify-unsuccessful")
+            try:
+                is_after_verify_unsuccessful_completed = (
+                    self._after_verify_unsuccessful(self._session, phase3_failed)
+                )
+                if not is_after_verify_unsuccessful_completed:
+                    phase4_exception = VerificationError(
+                        "After-verify-unsuccessful failed"
+                    )
+            except Exception as err:  # pylint: disable=broad-except
+                log.debug2("Error caught during after-verify: %s", err, exc_info=True)
+                phase4_exception = err
+
+        # If both deployment and verification is completed, run _after_verify.
         if phase3_complete and self._after_verify:
             log.debug("Running after-verify")
             try:
                 phase4_complete = self._after_verify(self._session)
                 if not phase4_complete:
-                    phase4_exception = VerificationError(
-                        "Application verification incomplete"
-                    )
+                    phase4_exception = VerificationError("After-verify failed")
             except Exception as err:  # pylint: disable=broad-except
                 log.debug2("Error caught during after-verify: %s", err, exc_info=True)
                 phase4_complete = False
@@ -405,9 +461,11 @@ class RolloutManager:
         # Log phase 4 results
         log.debug(
             "[Phase 4] After deploy result: %s",
-            "SUCCESS"
-            if phase4_complete
-            else ("FAILED" if phase4_exception else "NOT RUN"),
+            (
+                "SUCCESS"
+                if phase4_complete
+                else ("FAILED" if phase4_exception else "NOT RUN")
+            ),
         )
 
         # Create a final completion state with the "deployed nodes" pulled
