@@ -347,6 +347,16 @@ def test_run_reconcile_rerun():
         ctrlr.run_reconcile(session)
 
 
+def test_setup_failure():
+    session = setup_session()
+    ctrlr = DummyController(setup_components_fail=True)
+    ctrlr.run_reconcile(session)
+
+    # TODO, NOTE: specifying setup_components_fail as True did not trigger after_deploy_unsuccessful ...
+    assert not ctrlr.after_deploy.called
+    assert ctrlr.after_deploy_unsuccessful.called
+
+
 ##################
 ## after_deploy ##
 ##################
