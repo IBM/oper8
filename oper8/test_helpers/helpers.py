@@ -42,9 +42,9 @@ def configure_logging():
     alog.configure(
         os.environ.get("LOG_LEVEL", "off"),
         os.environ.get("LOG_FILTERS", ""),
-        formatter="json"
-        if os.environ.get("LOG_JSON", "").lower() == "true"
-        else "pretty",
+        formatter=(
+            "json" if os.environ.get("LOG_JSON", "").lower() == "true" else "pretty"
+        ),
         thread_id=os.environ.get("LOG_THREAD_ID", "").lower() == "true",
     )
 
@@ -496,7 +496,9 @@ class DummyController(Controller):
         self,
         components=None,
         after_deploy_fail=False,
+        after_deploy_unsuccessful_fail=False,
         after_verify_fail=False,
+        after_verify_unsuccessful_fail=False,
         setup_components_fail=False,
         finalize_components_fail=False,
         should_requeue_fail=False,
@@ -512,7 +514,9 @@ class DummyController(Controller):
 
         # Set up mocks
         self.after_deploy_fail = after_deploy_fail
+        self.after_deploy_unsuccessful_fail = after_deploy_unsuccessful_fail
         self.after_verify_fail = after_verify_fail
+        self.after_verify_unsuccessful_fail = after_verify_unsuccessful_fail
         self.setup_components_fail = setup_components_fail
         self.finalize_components_fail = finalize_components_fail
         self.should_requeue_fail = should_requeue_fail
@@ -521,9 +525,19 @@ class DummyController(Controller):
                 self.after_deploy_fail, super().after_deploy
             )
         )
+        self.after_deploy_unsuccessful = mock.Mock(
+            side_effect=get_failable_method(
+                self.after_deploy_unsuccessful_fail, super().after_deploy_unsuccessful
+            )
+        )
         self.after_verify = mock.Mock(
             side_effect=get_failable_method(
                 self.after_verify_fail, super().after_verify
+            )
+        )
+        self.after_verify_unsuccessful = mock.Mock(
+            side_effect=get_failable_method(
+                self.after_verify_unsuccessful_fail, super().after_verify_unsuccessful
             )
         )
         self.setup_components = mock.Mock(

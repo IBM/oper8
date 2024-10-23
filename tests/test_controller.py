@@ -266,7 +266,9 @@ def test_rollout_components():
 
     # Make sure the after_deploy and after_verify were called
     assert ctrlr.after_deploy.called
+    assert not ctrlr.after_deploy_unsuccessful.called
     assert ctrlr.after_verify.called
+    assert not ctrlr.after_verify_unsuccessful.called
 
     # Test completion state
     assert completion_state.deploy_completed()
