@@ -363,7 +363,9 @@ def test_after_deploy_failure():
         ctrlr.run_reconcile(session)
 
     assert ctrlr.after_deploy.called
+    assert not ctrlr.after_deploy_unsuccessful.called
     assert not ctrlr.after_verify.called
+    assert not ctrlr.after_verify_unsuccessful.called
 
 
 def test_after_deploy_error():
@@ -375,7 +377,9 @@ def test_after_deploy_error():
 
     # Make sure after_deploy was called, but after_verify was not
     assert ctrlr.after_deploy.called
+    assert not ctrlr.after_deploy_unsuccessful.called
     assert not ctrlr.after_verify.called
+    assert not ctrlr.after_verify_unsuccessful.called
 
 
 ##################
@@ -394,7 +398,9 @@ def test_after_verify_failure():
 
     # Make sure both after_deploy and after_verify were called
     assert ctrlr.after_deploy.called
+    assert not ctrlr.after_deploy_unsuccessful.called
     assert ctrlr.after_verify.called
+    assert not ctrlr.after_verify_unsuccessful.called
 
 
 def test_after_verify_error():
@@ -406,7 +412,9 @@ def test_after_verify_error():
 
     # Make sure both after_deploy and after_verify were called
     assert ctrlr.after_deploy.called
+    assert not ctrlr.after_deploy_unsuccessful.called
     assert ctrlr.after_verify.called
+    assert not ctrlr.after_verify_unsuccessful.called
 
 
 ####################
