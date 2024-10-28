@@ -460,7 +460,7 @@ class MockedOpenshiftDeployManager(OpenshiftDeployManager):
 
 class DummyNodeComponent(DummyComponentBase):
     """
-    Configurable dummy component which will create an abritrary set of
+    Configurable dummy component which will create an arbitrary set of
     resource node instances.
     """
 
@@ -784,7 +784,7 @@ def setup_vcs_project(
                 directory,
                 "commit",
                 "-m",
-                "Annother Commit",
+                "Another Commit",
             ],
             check=True,
         )
