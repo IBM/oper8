@@ -288,7 +288,7 @@ def test_internal_name_annotation():
         objs = comp.to_config(session)
     assert len(objs) == 1
     assert objs[0].metadata.annotations[
-        constants.INTERNAL_NAME_ANOTATION_NAME
+        constants.INTERNAL_NAME_ANNOTATION_NAME
     ] == ".".join([CompType.name, "bar"])
 
 

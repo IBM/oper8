@@ -16,7 +16,7 @@ import alog
 
 # Local
 from . import config
-from .constants import INTERNAL_NAME_ANOTATION_NAME, TEMPORARY_PATCHES_ANNOTATION_NAME
+from .constants import INTERNAL_NAME_ANNOTATION_NAME, TEMPORARY_PATCHES_ANNOTATION_NAME
 from .dag import Graph, Node, ResourceNode
 from .deploy_manager import DeployMethod
 from .exceptions import assert_cluster
@@ -489,11 +489,11 @@ class Component(Node, abc.ABC):
             if config.internal_name_annotation:
                 log.debug2(
                     "Adding internal name annotation [%s: %s]",
-                    INTERNAL_NAME_ANOTATION_NAME,
+                    INTERNAL_NAME_ANNOTATION_NAME,
                     name,
                 )
                 obj.setdefault("metadata", {}).setdefault("annotations", {})[
-                    INTERNAL_NAME_ANOTATION_NAME
+                    INTERNAL_NAME_ANNOTATION_NAME
                 ] = name
 
             # Allow children to inject additional modification logic
