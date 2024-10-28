@@ -38,7 +38,7 @@ log = alog.use_channel("TEST")
 
 
 def get_comp_type(name="dummy"):
-    """Paramterization helper to get test both standard and legacy components.
+    """Parametrization helper to get test both standard and legacy components.
     This function also wraps the output class type so that name class attributes
     are not polluted.
     """
