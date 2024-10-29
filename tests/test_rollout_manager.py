@@ -303,14 +303,14 @@ class TestRolloutManager:
         ctrlr = DummyController()
         ctrlr.setup_components(session)
 
-        try:
+        with pytest.raises(RolloutError):
             # Rollout should fail at phase1 (deployment) and raise RolloutError.
-            completion_state = ctrlr._rollout_components(session)
-        except RolloutError:
-            assert not ctrlr.after_deploy.called
-            assert ctrlr.after_deploy_unsuccessful.called
-            assert not ctrlr.after_deploy.called
-            assert not ctrlr.after_deploy.called
+            ctrlr._rollout_components(session)
+
+        assert not ctrlr.after_deploy.called
+        assert ctrlr.after_deploy_unsuccessful.called
+        assert not ctrlr.after_deploy.called
+        assert not ctrlr.after_deploy.called
 
     def test_rollout_deploy_incomplete(self):
         """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
