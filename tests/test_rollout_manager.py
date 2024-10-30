@@ -15,9 +15,19 @@ import alog
 
 # Local
 from oper8.dag import CompletionState, Node
-from oper8.exceptions import ClusterError, PreconditionError, VerificationError
+from oper8.exceptions import (
+    ClusterError,
+    PreconditionError,
+    RolloutError,
+    VerificationError,
+)
 from oper8.rollout_manager import RolloutManager
-from oper8.test_helpers.helpers import DummyNodeComponent, library_config, setup_session
+from oper8.test_helpers.helpers import (
+    DummyController,
+    DummyNodeComponent,
+    library_config,
+    setup_session,
+)
 
 ################################################################################
 ## Helpers #####################################################################
@@ -274,6 +284,33 @@ class TestRolloutManager:
         assert after_deploy_unsuccessful.called
         assert not after_verify.called
         assert not after_verify_unsuccessful.called
+
+    def test_deploy_throw_controller(self):
+        """Test that a throw during deploy is handled properly when rollout is triggered via controller"""
+        session = setup_session()
+
+        # Set up a linear set of components and configure the second-to-last to
+        # fail during deploy.
+        #
+        #    A -> B -x C
+        comp_a = DummyRolloutComponent("A")(session)
+        comp_b = DummyRolloutComponent("B")(session, deploy_fail=RuntimeError)
+        comp_c = DummyRolloutComponent("C")(session)
+        comps = [comp_a, comp_b, comp_c]
+        for i, comp in enumerate(comps[1:]):
+            session.add_component_dependency(comp, comps[i])
+
+        ctrlr = DummyController()
+        ctrlr.setup_components(session)
+
+        with pytest.raises(RolloutError):
+            # Rollout should fail at phase1 (deployment) and raise RolloutError.
+            ctrlr._rollout_components(session)
+
+        assert not ctrlr.after_deploy.called
+        assert ctrlr.after_deploy_unsuccessful.called
+        assert not ctrlr.after_deploy.called
+        assert not ctrlr.after_deploy.called
 
     def test_rollout_deploy_incomplete(self):
         """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,

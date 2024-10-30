@@ -41,7 +41,9 @@ TEMPORARY_PATCHES_ANNOTATION_NAME = "oper8.org/temporary-patches"
 
 # The name of the annotation used to indicate the internal name of each
 # oper8-managed resource
-INTERNAL_NAME_ANOTATION_NAME = "oper8.org/internal-name"
+INTERNAL_NAME_ANNOTATION_NAME = "oper8.org/internal-name"
+# Keeping the misspelled variable for backward compatibility: https://github.com/IBM/oper8/pull/133#discussion_r1820696481
+INTERNAL_NAME_ANOTATION_NAME = INTERNAL_NAME_ANNOTATION_NAME
 
 # Default namespace if none given
 DEFAULT_NAMESPACE = "default"

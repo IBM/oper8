@@ -356,7 +356,9 @@ class Controller(abc.ABC):
         rollout_manager = RolloutManager(
             session=session,
             after_deploy=self.after_deploy,
+            after_deploy_unsuccessful=self.after_deploy_unsuccessful,
             after_verify=self.after_verify,
+            after_verify_unsuccessful=self.after_verify_unsuccessful,
         )
         completion_state = rollout_manager.rollout()
         rollout_failed = completion_state.failed()
