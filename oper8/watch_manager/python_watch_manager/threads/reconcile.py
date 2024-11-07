@@ -71,9 +71,16 @@ class ReconcileThread(
             leadership_manager=leadership_manager,
         )
 
+        # Configure the multiprocessing process spawning context
+        context = config.python_watch_manager.process_context
+        if context not in multiprocessing.get_all_start_methods():
+            raise ConfigError(f"Invalid process_context: '{context}'")
+
+        self.spawn_ctx = multiprocessing.get_context(context)
+        
         # Setup required queues
-        self.request_queue = multiprocessing.Queue()
-        self.logging_queue = multiprocessing.Queue()
+        self.request_queue = self.spawn_ctx.Queue()
+        self.logging_queue = self.spawn_ctx.Queue()
 
         # Setup helper threads
         self.timer_thread: TimerThread = TimerThread()
@@ -88,13 +95,6 @@ class ReconcileThread(
 
         # Setup control variables
         self.process_overload = threading.Event()
-
-        # Configure the multiprocessing process spawning context
-        context = config.python_watch_manager.process_context
-        if context not in multiprocessing.get_all_start_methods():
-            raise ConfigError(f"Invalid process_context: '{context}'")
-
-        self.spawn_ctx = multiprocessing.get_context(context)
 
         # Configure the max number of concurrent reconciles via either config
         # or number of cpus
