@@ -73,7 +73,7 @@ python_watch_manager:
   max_concurrent_reconciles: null
   reconcile_period: 10m
 
-  process_context: fork
+  process_context: spawn
   watch_dependent_resources: false
   subsystem_rollout: false
 
