@@ -10,7 +10,11 @@ import pytest
 
 # Local
 from oper8.reconcile import ReconcileManager
-from oper8.test_helpers.helpers import configure_logging, version_safe_md5
+from oper8.test_helpers.helpers import (
+    config_detail_dict,
+    configure_logging,
+    version_safe_md5,
+)
 
 configure_logging()
 
@@ -24,6 +28,15 @@ def no_local_kubeconfig():
         "kubernetes.config.new_client_from_config", side_effect=RuntimeError
     ):
         yield
+
+@pytest.fixture(autouse=True)
+def fork_multiprocess():
+    """This fixture makes sure that we use fork for multiprocessing instead of
+    spawn. Spawn is more reliable with FIPs and OpenSSL but causes issues with
+    pickling objects.
+    """
+    # Don't use library_config since some tests read the config object directly
+    config_detail_dict.python_watch_manager.process_context = "fork"
 
 
 @pytest.fixture(autouse=True)
