@@ -77,7 +77,7 @@ class ReconcileThread(
             raise ConfigError(f"Invalid process_context: '{context}'")
 
         self.spawn_ctx = multiprocessing.get_context(context)
-        
+
         # Setup required queues
         self.request_queue = self.spawn_ctx.Queue()
         self.logging_queue = self.spawn_ctx.Queue()
