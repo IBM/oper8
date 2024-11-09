@@ -9,6 +9,7 @@ from multiprocessing.connection import Connection
 from time import sleep
 from typing import Dict, List, Optional
 import multiprocessing
+import multiprocessing.forkserver
 import os
 import queue
 import threading
@@ -75,6 +76,13 @@ class ReconcileThread(
         context = config.python_watch_manager.process_context
         if context not in multiprocessing.get_all_start_methods():
             raise ConfigError(f"Invalid process_context: '{context}'")
+
+        if context == "fork":
+            log.warning(
+                "The fork multiprocessing context is known to cause deadlocks in certain"
+                " environments due to OpenSSL. Consider using spawn for more reliable"
+                " reconciling"
+            )
 
         self.spawn_ctx = multiprocessing.get_context(context)
 

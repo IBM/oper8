@@ -29,11 +29,12 @@ def no_local_kubeconfig():
     ):
         yield
 
+
 @pytest.fixture(autouse=True)
 def fork_multiprocess():
     """This fixture makes sure that we use fork for multiprocessing instead of
-    spawn. Spawn is more reliable with FIPs and OpenSSL but causes issues with
-    pickling objects.
+    spawn. Spawn is more reliable with FIPs and OpenSSL but causes issues when
+    pickling mocked or patched objects.
     """
     # Don't use library_config since some tests read the config object directly
     config_detail_dict.python_watch_manager.process_context = "fork"
