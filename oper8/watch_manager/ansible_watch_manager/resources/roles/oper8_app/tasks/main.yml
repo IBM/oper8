@@ -12,7 +12,7 @@
   # 1) Define the 'develop_shell' ansible variable in the playbook invocation
   # 2) Define the per-playbook 'enable_ansible_vcs' variable
   # 3) Set the ANSIBLE_VCS environment variable
-  when: develop_shell is not defined and "{{ enable_ansible_vcs | default('true', True) }}" != "false" and "{{ lookup('env', 'ANSIBLE_VCS') | default('true', True) }}" != "false"
+  when: develop_shell is not defined and "enable_ansible_vcs | default('true', True)" != "false" and "lookup('env', 'ANSIBLE_VCS') | default('true', True)" != "false"
   ansible.builtin.set_fact:
     enable_ansible_vcs: true
 
