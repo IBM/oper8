@@ -153,3 +153,8 @@ ignore = [
     "F401", # imported but unused
     "F403" # unable to detect undefined names
 ]
+"oper8/watch_manager/ansible_watch_manager/modules/k8s_application.py" = [
+    # Ansible requires UTF-8 encoding declaration for Ansible modules
+    # https://docs.ansible.com/ansible/latest/dev_guide/developing_modules_documenting.html#python-shebang-utf-8-coding
+    "UP009" # UTF-8 encoding declaration is unnecessary
+]
