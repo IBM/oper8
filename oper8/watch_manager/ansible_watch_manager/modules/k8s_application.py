@@ -1,4 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+# NOTE: For ansible, the shebang must be an absolute path, not env
+# https://docs.ansible.com/ansible/latest/dev_guide/developing_modules_documenting.html#python-shebang-utf-8-coding
 
 ## Imports #####################################################################
 
