@@ -43,8 +43,8 @@ def verify_resource(
     api_version: str,
     session,
     *,
-    # Use a predfined _SESSION_NAMESPACE default instead of None to differentiate between
-    # nonnamespaced resources (which pass None) and those that use session.namespace
+    # Use a predefined _SESSION_NAMESPACE default instead of None to differentiate between
+    # non-namespaced resources (which pass None) and those that use session.namespace
     namespace: Optional[str] = _SESSION_NAMESPACE,
     verify_function: Optional[RESOURCE_VERIFY_FUNCTION] = None,
     is_subsystem: bool = False,
@@ -74,7 +74,7 @@ def verify_resource(
         is_subsystem:  bool
             Whether or not the given kind is an oper8 subsystem
         condition_type:  str
-            For non-stanard types, this is the type name for the condition to
+            For non-standard types, this is the type name for the condition to
             check for verification
         timestamp_key:  str
             For non-standard types, this is the key in the condition to use to

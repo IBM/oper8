@@ -129,7 +129,7 @@ class RolloutManager:
                 rollout_failed = True
 
         # If a failure occurred by throwing, treat that the same as an
-        # explict failure.
+        # explicit failure.
         except Oper8Error as err:
             log.debug("Caught Oper8Error during rollout of [%s]", component)
             success = False

@@ -302,7 +302,7 @@ class abstractclassproperty:  # pylint: disable=invalid-name,too-few-public-meth
 
     def __get__(self, *args):
         # If this is being called by __setattr__, we're ok because it's
-        # apptempting to set the attribute on the class
+        # attempting to set the attribute on the class
         curframe = inspect.currentframe()
         callframe = inspect.getouterframes(curframe, 2)[1]
         caller_name = callframe[3]

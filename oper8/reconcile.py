@@ -373,9 +373,11 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         alog.configure(
             default_level=default_level,
             filters=filters,
-            formatter=Oper8JsonFormatter(cr_manifest, reconciliation_id)
-            if log_json
-            else "pretty",
+            formatter=(
+                Oper8JsonFormatter(cr_manifest, reconciliation_id)
+                if log_json
+                else "pretty"
+            ),
             thread_id=log_thread_id,
             handler_generator=handler_generator,
         )
@@ -657,7 +659,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 c for c in path if c.isalnum() or c in keepcharacters
             ).rstrip()
 
-        # Setup destination templating to allow for CR specific checkout paths
+        # Setup destination template to allow for CR specific checkout paths
         # The entirety of the cr_manifest is included as a dict as well as some
         # custom keys
         template_mappings = {
@@ -868,7 +870,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 constants.CONFIG_DEFAULTS_ANNOTATION_NAME
             ]
 
-            # Allow sub-keys to be deliniated by "/"
+            # Allow sub-keys to be delineated by "/"
             parts = config_defaults_name.split("/")
             config_defaults_cm_name = parts[0]
 

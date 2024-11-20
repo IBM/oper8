@@ -77,7 +77,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             reconciliation_id:  str
                 The unique ID for this reconciliation
             cr_manifest:  aconfig.Config
-                The full value of the CR mainfest that triggered this
+                The full value of the CR manifest that triggered this
                 reconciliation
             config:  aconfig.Config
                 The compiled backend config for this reconciliation
@@ -218,7 +218,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     @alog.logged_function(log.debug2)
     def add_component(self, component: COMPONENT_INSTANCE_TYPE):
-        """Add a component to this deploy associated with a specfic application
+        """Add a component to this deploy associated with a specific application
 
         Args:
             component:  Component
@@ -244,7 +244,7 @@ class Session:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 The upstream component or name of upstream that must be deployed before component
             verify_function:  callable
                 A callable function of the form `def verify(session) -> bool:`
-                to use to verify that the dependency has been satisified. This
+                to use to verify that the dependency has been satisfied. This
                 will be used to block deployment of the component beyond
                 requiring that the upstream has been deployed successfully.
         """

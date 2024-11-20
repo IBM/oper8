@@ -1,6 +1,7 @@
 """
 Tests for the OpenshiftDeployManager
 """
+
 # Standard
 from contextlib import contextmanager
 from queue import Queue
@@ -9,7 +10,6 @@ from unittest import mock
 import time
 
 # Third Party
-from openshift.dynamic.exceptions import UnprocessibleEntityError
 import pytest
 
 # First Party
@@ -77,7 +77,7 @@ def make_obj_states(cluster_state, name_override=None):
     return states
 
 
-def get_ansbile_conditions(status):
+def get_ansible_conditions(status):
     return [
         cond
         for cond in status.get("conditions", [])
@@ -87,7 +87,7 @@ def get_ansbile_conditions(status):
 
 @contextmanager
 def gather_watch_events(dm, *args, expected_events=None, **kwargs):
-    """Helper function to pipe watch events from a seperate thread into a queue"""
+    """Helper function to pipe watch events from a separate thread into a queue"""
 
     # Wait until the watch has started before returning. This prevents
     # duplicate events
@@ -1143,7 +1143,7 @@ def test_watch_objects_resourced():
         name="bar",
     ) as watch_queue:
 
-        # Create and Delete objects while updating a nonwatched resource. Ensure only
+        # Create and Delete objects while updating a non-watched resource. Ensure only
         # the create and delete events are captured
         dm.deploy(
             make_obj_states(
@@ -1391,7 +1391,7 @@ def test_set_status_no_api_version():
 
 def test_set_status_ansible_status_not_ready():
     """Make sure that when ansible status management is enabled and the status
-    is not ready, the correct ansbile status is injected.
+    is not ready, the correct ansible status is injected.
     """
     dm = setup_testable_manager(
         manage_ansible_status=True,
@@ -1416,7 +1416,7 @@ def test_set_status_ansible_status_not_ready():
     assert success
     cluster_status = content["status"]
     log.debug3("Updated status: %s", cluster_status)
-    ansible_conditions = get_ansbile_conditions(cluster_status)
+    ansible_conditions = get_ansible_conditions(cluster_status)
     assert len(ansible_conditions) == 1
     assert (
         ansible_conditions[0].get("ansibleResult")
@@ -1426,7 +1426,7 @@ def test_set_status_ansible_status_not_ready():
 
 def test_set_status_ansible_status_ready():
     """Make sure that when ansible status management is enabled and the status
-    is ready, the correct ansbile status is injected.
+    is ready, the correct ansible status is injected.
     """
     dm = setup_testable_manager(
         manage_ansible_status=True,
@@ -1453,7 +1453,7 @@ def test_set_status_ansible_status_ready():
     assert success
     cluster_status = content["status"]
     log.debug3("Updated status: %s", cluster_status)
-    ansible_conditions = get_ansbile_conditions(cluster_status)
+    ansible_conditions = get_ansible_conditions(cluster_status)
     assert len(ansible_conditions) == 1
     assert (
         ansible_conditions[0].get("ansibleResult")
@@ -1492,7 +1492,7 @@ def test_set_status_ansible_status_transition():
         kind="Foo", name="bar", namespace="test"
     )[1]["status"]
     log.debug3("Updated status: %s", cluster_status)
-    ansible_conditions = get_ansbile_conditions(cluster_status)
+    ansible_conditions = get_ansible_conditions(cluster_status)
     assert len(ansible_conditions) == 1
     assert (
         ansible_conditions[0].get("ansibleResult")
@@ -1535,7 +1535,7 @@ def test_set_status_ansible_status_no_transition():
         kind="Foo", name="bar", namespace="test"
     )[1]["status"]
     log.debug3("Updated status: %s", cluster_status)
-    ansible_conditions = get_ansbile_conditions(cluster_status)
+    ansible_conditions = get_ansible_conditions(cluster_status)
     assert len(ansible_conditions) == 1
     assert (
         ansible_conditions[0].get("ansibleResult")
