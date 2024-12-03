@@ -131,6 +131,8 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         else:
             self.home_dir = os.getcwd()
 
+        # Create an empty variable for VCS creation. This will be initialized
+        # during reconcile
         self.vcs = None
 
         # If enable_vcs is not provided than default to
@@ -138,6 +140,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         if enable_vcs is None:
             enable_vcs = config.vcs.enabled
 
+        self.enable_vcs = enable_vcs
         if enable_vcs:
             assert_config(
                 config.vcs.repo,
@@ -152,8 +155,6 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 config.vcs.checkout_method in vcs_checkout_methods,
                 f"VCS checkout method must be one of the following {vcs_checkout_methods}",
             )
-
-            self.vcs = VCS(self.home_dir)
 
         # Ensure config is setup correctly for strict_versioning
         if config.strict_versioning:
@@ -218,6 +219,10 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             log.info("CR is paused. Exiting reconciliation")
             result = ReconciliationResult(requeue=False, requeue_params=RequeueParams())
             return result
+
+        # If vcs is enabled then configure the repo
+        if self.enable_vcs:
+            self.vcs = VCS(self.home_dir)
 
         # Check strict versioning before continuing
         if config.strict_versioning:
@@ -405,6 +410,11 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             cr_manifest: aconfig.Config
                 The cr manifest to pull the requested version from.
         """
+        # If vcs still has  not created then create it here. This
+        # is mainly used by tests
+        if not self.vcs:
+            self.vcs = VCS(self.home_dir)
+
         version = get_manifest_version(cr_manifest)
         if not version:
             raise ValueError("CR Manifest has no version")
@@ -627,7 +637,11 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         )
 
         # If VCS is enabled ensure the branch or tag exists
-        if self.vcs:
+        if self.enable_vcs:
+            # If vcs is not created then create it here
+            if not self.vcs:
+                self.vcs = VCS(self.home_dir)
+
             repo_versions = self.vcs.list_refs()
             assert_config(
                 version in repo_versions,
