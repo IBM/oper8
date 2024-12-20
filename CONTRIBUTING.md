@@ -156,6 +156,31 @@ To format and lint the codes,
 tox -e fmt,lint
 ```
 
+## [Optional] Documentation setup
+
+This repository uses [mkdocs](https://github.com/mkdocs/mkdocs/tree/master) to generate a documentation from python docstring. As long as you write docstrings for your code, the document (API references section) will be automatically updated when the code is merged into `main` branch, so there is no need for you to do anything.
+
+If you want to manually edit the document, please run the following commands to setup the editing environment.
+
+```bash
+pip install mkdocs-material
+pip install 'mkdocstrings[python]'
+```
+
+You can edit the documentation at `docs` folder (i.e. `docs/index.md`) to update the document.
+
+In order to view the current documentation locally, run the following command. This will host the document at your local server.
+
+```bash
+mkdocs serve
+```
+
+For more information about mkdocs, please refer to their documentations:
+
+- mkdocs: https://github.com/mkdocs/mkdocs/tree/master
+- mkdocs material (material theme wrapper for mkdocs): https://github.com/squidfunk/mkdocs-material
+- mkdocstrings (plugin to automatically generate documentation from docstrings): https://github.com/mkdocstrings/mkdocstrings
+
 # Your First Contribution
 
 Would you like to help drive the community forward? We will help you understand the organization of the project and direct you to the best places to get started. You'll be able to pick up issues, write code to fix them, and get your work reviewed and merged.
