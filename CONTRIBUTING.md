@@ -156,6 +156,33 @@ To format and lint the codes,
 tox -e fmt,lint
 ```
 
+This repository uses [mkdocs](https://github.com/mkdocs/mkdocs/tree/master) to generate a documentation from python docstring. As long as you write the docstrings for your code, the document (API references section) will be updated whenever you run `tox -e docs` command. The document will be automatically published when your PR is merged into `main` branch.
+
+To build the documentation based on your current codes, run the following command. This will outputs the documentation into `./site` folder.
+
+```bash
+tox -e docs
+```
+
+To run other mkdocs command,
+
+```bash
+tox -e docs -- <mkdocs command>
+
+# For instance, serve the current documentation locally,
+tox -e docs -- serve
+...
+INFO    -  [17:35:25] Serving on http://127.0.0.1:8000/
+```
+
+You can also manually edit or add pages to the documentation by modifying files under `./docs` folder.
+
+For more information about mkdocs, please refer to their documentations:
+
+- mkdocs: https://github.com/mkdocs/mkdocs/tree/master
+- mkdocs material (material theme wrapper for mkdocs): https://github.com/squidfunk/mkdocs-material
+- mkdocstrings (plugin to automatically generate documentation from docstrings): https://github.com/mkdocstrings/mkdocstrings
+
 # Your First Contribution
 
 Would you like to help drive the community forward? We will help you understand the organization of the project and direct you to the best places to get started. You'll be able to pick up issues, write code to fix them, and get your work reviewed and merged.

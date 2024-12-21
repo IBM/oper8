@@ -26,3 +26,6 @@ venv/
 
 # Setuptools scm version
 _version.py
+
+# mkdocs documentation
+/site
