@@ -28,9 +28,7 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - name: Install MkDocs Dependencies
-        run: |
-          pip install mkdocs-material
-          pip install 'mkdocstrings[python]'
-      - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force
+      - name: Install mkdocs dependencies
+        run: pip install tox
+      - name: Deploy documentation to GitHub Pages
+        run: tox -e docs -- gh-deploy --force
