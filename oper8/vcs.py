@@ -402,7 +402,7 @@ class VCS:
             ) from err
         except GitError as err:
             # If reference is already checked out it must have been done by a different process
-            if str(err) == "reference is already checked out":
+            if "is already checked out" in str(err):
                 log.warning(
                     "Branch %s already checked out by other process",
                     worktree_name,
