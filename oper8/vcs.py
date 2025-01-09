@@ -112,7 +112,7 @@ class VCS:
     @property
     def head(self) -> str:
         """Get a reference to the current HEAD"""
-        return self.repo.head.target.hex
+        return str(self.repo.head.target)
 
     def get_ref(self, refish: str) -> Tuple[Commit, Reference]:
         """Get a git commit and reference from a shorthand string
