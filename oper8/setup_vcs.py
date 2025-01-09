@@ -216,7 +216,7 @@ class VCSRepoInitializer:
         self.dest_repo.checkout_ref(branch.name)
 
         # Make a commit with these files
-        self.dest_repo.create_commit(keep_ref, parents=[root_commit.oid])
+        self.dest_repo.create_commit(keep_ref, parents=[root_commit.id])
 
         # Check the root branch back out
         self.dest_repo.checkout_ref(self.DEFAULT_BRANCH_NAME)
