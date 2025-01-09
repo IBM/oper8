@@ -112,7 +112,7 @@ class VCS:
     @property
     def head(self) -> str:
         """Get a reference to the current HEAD"""
-        return self.repo.head.target.hex
+        return str(self.repo.head.target)
 
     def get_ref(self, refish: str) -> Tuple[Commit, Reference]:
         """Get a git commit and reference from a shorthand string
@@ -402,7 +402,7 @@ class VCS:
             ) from err
         except GitError as err:
             # If reference is already checked out it must have been done by a different process
-            if str(err) == "reference is already checked out":
+            if "is already checked out" in str(err):
                 log.warning(
                     "Branch %s already checked out by other process",
                     worktree_name,
