@@ -15,9 +15,9 @@ import logging
 import os
 import pathlib
 import random
+import re
 import sys
 import uuid
-import re
 
 # Third Party
 import dateutil
@@ -61,7 +61,9 @@ class RequeueParams:
     """RequeueParams holds parameters for requeue request"""
 
     requeue_after: datetime.timedelta = field(
-        default_factory=lambda: datetime.timedelta(seconds=float(config.requeue_after_seconds))
+        default_factory=lambda: datetime.timedelta(
+            seconds=float(config.requeue_after_seconds)
+        )
     )
 
 
@@ -235,7 +237,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         deploy_manager = self.setup_deploy_manager(cr_manifest)
 
         # Setup Session
-        session = self.setup_session(controller, cr_manifest, deploy_manager, reconcile_id)
+        session = self.setup_session(
+            controller, cr_manifest, deploy_manager, reconcile_id
+        )
 
         # Run the controller reconcile
         result = self.run_controller(controller, session, is_finalizer)
@@ -276,13 +280,17 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             # Requeue after ~7.5 seconds. Add randomness to avoid
             # repeated conflicts
             requeue_time = 5 + random.uniform(0, 5)
-            params = RequeueParams(requeue_after=datetime.timedelta(seconds=requeue_time))
+            params = RequeueParams(
+                requeue_after=datetime.timedelta(seconds=requeue_time)
+            )
             log.debug("VCS Multiprocessing Error Detected: {%s}", exc, exc_info=True)
             log.warning(
                 "VCS Setup failed due to other process. Requeueing in %ss",
                 requeue_time,
             )
-            return ReconciliationResult(requeue=True, requeue_params=params, exception=exc)
+            return ReconciliationResult(
+                requeue=True, requeue_params=params, exception=exc
+            )
 
         # Capture all generic exceptions
         except Exception as exc:  # pylint: disable=broad-except
@@ -300,7 +308,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         # exception during reconcile and we should requeue
         # with the default backoff period
         log.info("Requeuing CR due to error during reconcile")
-        return ReconciliationResult(requeue=True, requeue_params=RequeueParams(), exception=error)
+        return ReconciliationResult(
+            requeue=True, requeue_params=RequeueParams(), exception=error
+        )
 
     ## Reconciliation Stages ############################################################
 
@@ -338,11 +348,15 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         # NOTE: We use safe fetching here because this happens before CR
         #   verification in the Session constructor
         annotations = cr_manifest.get("metadata", {}).get("annotations", {})
-        default_level = annotations.get(constants.LOG_DEFAULT_LEVEL_NAME, config.log_level)
+        default_level = annotations.get(
+            constants.LOG_DEFAULT_LEVEL_NAME, config.log_level
+        )
 
         filters = annotations.get(constants.LOG_FILTERS_NAME, config.log_filters)
         log_json = annotations.get(constants.LOG_JSON_NAME, str(config.log_json))
-        log_thread_id = annotations.get(constants.LOG_THREAD_ID_NAME, str(config.log_thread_id))
+        log_thread_id = annotations.get(
+            constants.LOG_THREAD_ID_NAME, str(config.log_thread_id)
+        )
 
         # Convert boolean args
         log_json = (log_json or "").lower() == "true"
@@ -362,7 +376,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             default_level=default_level,
             filters=filters,
             formatter=(
-                Oper8JsonFormatter(cr_manifest, reconciliation_id) if log_json else "pretty"
+                Oper8JsonFormatter(cr_manifest, reconciliation_id)
+                if log_json
+                else "pretty"
             ),
             thread_id=log_thread_id,
             handler_generator=handler_generator,
@@ -412,13 +428,17 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 "Working directory %s could not be found. Invalid module path",
                 working_dir,
             )
-            raise ConfigError(f"Module path: '{module_path}' could not be found in repository")
+            raise ConfigError(
+                f"Module path: '{module_path}' could not be found in repository"
+            )
 
         log.debug4("Changing working directory to %s", working_dir)
         os.chdir(working_dir)
         sys.path.insert(0, str(working_dir))
 
-    def setup_controller(self, controller_info: CONTROLLER_INFO) -> CONTROLLER_CLASS_TYPE:
+    def setup_controller(
+        self, controller_info: CONTROLLER_INFO
+    ) -> CONTROLLER_CLASS_TYPE:
         """
         Import the requested Controller class and enable any compatibility layers
 
@@ -633,7 +653,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
 
         return bool(self.strict_version_regex.match(cr_manifest.get("kind")))
 
-    def _setup_directory(self, cr_manifest: aconfig.Config, version: str) -> pathlib.Path:
+    def _setup_directory(
+        self, cr_manifest: aconfig.Config, version: str
+    ) -> pathlib.Path:
         """Construct the VCS directory from the cr_manifest and version. Then
         checkout the directory
 
@@ -651,7 +673,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         # Generate checkout directory and ensure path exists
         def sanitize_for_path(path):
             keepcharacters = (" ", ".", "_")
-            return "".join(c for c in path if c.isalnum() or c in keepcharacters).rstrip()
+            return "".join(
+                c for c in path if c.isalnum() or c in keepcharacters
+            ).rstrip()
 
         # Setup destination template to allow for CR specific checkout paths
         # The entirety of the cr_manifest is included as a dict as well as some
@@ -671,7 +695,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         try:
             formatted_path = config.vcs.dest.format(**template_mappings)
         except KeyError as exc:
-            log.warning("Invalid key: %s found in vcs destination template", exc, exc_info=True)
+            log.warning(
+                "Invalid key: %s found in vcs destination template", exc, exc_info=True
+            )
             raise ConfigError("Invalid Key found in vcs destination template") from exc
 
         checkout_dir = pathlib.Path(formatted_path)
@@ -714,14 +740,18 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 if sys.modules.pop(parent_module, None):
                     reimport_modules.add(parent_module)
         for child_module in [
-            mod_name for mod_name in sys.modules if mod_name.startswith(f"{module_parts[0]}.")
+            mod_name
+            for mod_name in sys.modules
+            if mod_name.startswith(f"{module_parts[0]}.")
         ]:
             log.debug3("UnImporting child module: %s", child_module)
             if sys.modules.pop(child_module, None):
                 reimport_modules.add(child_module)
         return reimport_modules
 
-    def _import_controller(self, controller_info: CONTROLLER_INFO) -> CONTROLLER_CLASS_TYPE:
+    def _import_controller(
+        self, controller_info: CONTROLLER_INFO
+    ) -> CONTROLLER_CLASS_TYPE:
         """Parse the controller info and reimport the controller
 
         Args:
@@ -755,7 +785,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         )
         reimport_modules = {module_name}
         if self.reimport_controller:
-            reimport_modules = reimport_modules.union(self._unimport_controller_module(module_name))
+            reimport_modules = reimport_modules.union(
+                self._unimport_controller_module(module_name)
+            )
 
         # Attempt to import the modules
         log.debug2("Attempting to import [%s.%s]", module_name, class_name)
@@ -806,7 +838,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
 
         return controller_class
 
-    def _configure_controller(self, controller_class: CONTROLLER_CLASS_TYPE) -> CONTROLLER_TYPE:
+    def _configure_controller(
+        self, controller_class: CONTROLLER_CLASS_TYPE
+    ) -> CONTROLLER_TYPE:
         """Construct the Controller Class
 
         Args:
@@ -850,13 +884,17 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         annotation_config_defaults = {}
         if constants.CONFIG_DEFAULTS_ANNOTATION_NAME in annotations:
             log.debug("Pulling config_defaults based on annotation")
-            config_defaults_name = annotations[constants.CONFIG_DEFAULTS_ANNOTATION_NAME]
+            config_defaults_name = annotations[
+                constants.CONFIG_DEFAULTS_ANNOTATION_NAME
+            ]
 
             # Allow sub-keys to be delineated by "/"
             parts = config_defaults_name.split("/")
             config_defaults_cm_name = parts[0]
 
-            log.debug2("Reading config_defaults from ConfigMap [%s]", config_defaults_cm_name)
+            log.debug2(
+                "Reading config_defaults from ConfigMap [%s]", config_defaults_cm_name
+            )
             success, content = deploy_manager.get_object_current_state(
                 kind="ConfigMap",
                 name=config_defaults_cm_name,
@@ -1058,8 +1096,13 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             current_status = session.get_status()
 
             # If not initializing then update the ready condition with in_progress
-            current_ready_cond = status.get_condition(status.READY_CONDITION, current_status)
-            if current_ready_cond.get("reason") != status.ReadyReason.INITIALIZING.value:
+            current_ready_cond = status.get_condition(
+                status.READY_CONDITION, current_status
+            )
+            if (
+                current_ready_cond.get("reason")
+                != status.ReadyReason.INITIALIZING.value
+            ):
                 status_update["ready_reason"] = status.ReadyReason.IN_PROGRESS
                 status_update["ready_message"] = "Verify InProgress"
 
@@ -1067,9 +1110,13 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             status_update["updating_message"] = "Component verification incomplete"
 
         log.debug3("Updating status after reconcile: %s", status_update)
-        self._update_resource_status(session.deploy_manager, session.cr_manifest, **status_update)
+        self._update_resource_status(
+            session.deploy_manager, session.cr_manifest, **status_update
+        )
 
-    def _update_error_status(self, resource: Union[dict, aconfig.Config], error: Exception) -> dict:
+    def _update_error_status(
+        self, resource: Union[dict, aconfig.Config], error: Exception
+    ) -> dict:
         """Update the status of a resource after an error occurred. This function
         setups up it's own deploy manager and parses the resource. This way errors at any
         phase of reconciliation can still get updated
@@ -1136,4 +1183,6 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 "updating_message": str(error),
             }
 
-        return self._update_resource_status(deploy_manager, cr_manifest, **status_update)
+        return self._update_resource_status(
+            deploy_manager, cr_manifest, **status_update
+        )

@@ -19,7 +19,7 @@ dump_disabled: false
 standalone: false
 
 # Whether or not to strictly enforce that the version in a CR matches one of the
-# versions specified in the available versions list. If strict_version_kind_regex 
+# versions specified in the available versions list. If strict_version_kind_regex
 # is provided then only Kind's that match that regex will be checked. The default regex
 # ignores temporary patches since they are unversioned
 strict_versioning: false

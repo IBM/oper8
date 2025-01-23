@@ -575,6 +575,7 @@ def test_check_strict_versioning():
         with pytest.raises(ValueError):
             rm._check_strict_versioning(cr)
 
+
 def test_should_check_strict_versioning():
     """Check basic strict versioning functionality"""
 
@@ -590,13 +591,17 @@ def test_should_check_strict_versioning():
         assert rm._should_check_strict_version(cr)
 
     # Check various regexs.
-    with library_config(strict_versioning=True, strict_version_kind_regex=cr.get("kind")):
+    with library_config(
+        strict_versioning=True, strict_version_kind_regex=cr.get("kind")
+    ):
         rm = ReconcileManager()
         assert rm._should_check_strict_version(cr)
     with library_config(strict_versioning=True, strict_version_kind_regex=".*"):
         rm = ReconcileManager()
         assert rm._should_check_strict_version(cr)
-    with library_config(strict_versioning=True, strict_version_kind_regex="SomeRandomRegex"):
+    with library_config(
+        strict_versioning=True, strict_version_kind_regex="SomeRandomRegex"
+    ):
         rm = ReconcileManager()
         assert not rm._should_check_strict_version(cr)
 
