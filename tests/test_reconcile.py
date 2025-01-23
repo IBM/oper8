@@ -575,6 +575,37 @@ def test_check_strict_versioning():
         with pytest.raises(ValueError):
             rm._check_strict_versioning(cr)
 
+def test_should_check_strict_versioning():
+    """Check basic strict versioning functionality"""
+
+    # Create CR, and RM
+    cr = setup_cr(version="1.0")
+
+    # Check global strict_versioning settings
+    with library_config(strict_versioning=False):
+        rm = ReconcileManager()
+        assert not rm._should_check_strict_version(cr)
+    with library_config(strict_versioning=True):
+        rm = ReconcileManager()
+        assert rm._should_check_strict_version(cr)
+
+    # Check various regexs.
+    with library_config(strict_versioning=True, strict_version_kind_regex=cr.get("kind")):
+        rm = ReconcileManager()
+        assert rm._should_check_strict_version(cr)
+    with library_config(strict_versioning=True, strict_version_kind_regex=".*"):
+        rm = ReconcileManager()
+        assert rm._should_check_strict_version(cr)
+    with library_config(strict_versioning=True, strict_version_kind_regex="SomeRandomRegex"):
+        rm = ReconcileManager()
+        assert not rm._should_check_strict_version(cr)
+
+    # Check default regex for temp patches
+    temp_patch_cr = setup_cr("TemporaryPatch")
+    with library_config(strict_versioning=True):
+        rm = ReconcileManager()
+        assert not rm._should_check_strict_version(temp_patch_cr)
+
 
 def test_check_strict_versioning_vcs():
     """Check strict versioning with VCS"""
