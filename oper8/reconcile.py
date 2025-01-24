@@ -15,6 +15,7 @@ import logging
 import os
 import pathlib
 import random
+import re
 import sys
 import uuid
 
@@ -156,6 +157,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             self.vcs = VCS(self.home_dir)
 
         # Ensure config is setup correctly for strict_versioning
+        self.strict_version_regex = re.compile(config.strict_version_kind_regex or ".*")
         if config.strict_versioning:
             assert_config(
                 config.supported_versions is not None,
@@ -220,7 +222,7 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             return result
 
         # Check strict versioning before continuing
-        if config.strict_versioning:
+        if self._should_check_strict_version(cr_manifest):
             self._check_strict_versioning(cr_manifest)
 
         # Check if VCS is enabled and then attempt to checkout
@@ -634,6 +636,22 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 f"Version not found in repo: {version}",
             )
             log.debug3("Supported VCS Versions: %s", repo_versions)
+
+    def _should_check_strict_version(self, cr_manifest: aconfig.Config) -> bool:
+        """Helper function to check if we should enforce strict versioning. Checks the
+        general config and then matches the kind regex
+
+        Args:
+            cr_manifest: aconfig.Config
+                The CR for this reconciliation
+
+        Returns:
+            bool: True if we should check this kind
+        """
+        if not config.strict_versioning:
+            return False
+
+        return bool(self.strict_version_regex.match(cr_manifest.get("kind")))
 
     def _setup_directory(
         self, cr_manifest: aconfig.Config, version: str
