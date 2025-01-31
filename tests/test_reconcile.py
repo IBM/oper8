@@ -389,6 +389,31 @@ def test_setup_vcs_invalid_module_dir():
             rm.setup_vcs(cr)
 
 
+def test_setup_vcs_default_skip_path(cleanup_vcs):
+    """Test that setup_vcs correctly skips kind regex matches"""
+
+    # Setup required variables
+    with tempfile.TemporaryDirectory() as vcs_directory:
+        rm = ReconcileManager()
+
+        # Capture current path/cwd for checks
+        current_cwd = os.getcwd()
+        current_path = copy.deepcopy(sys.path)
+
+        # Create a TemporaryPatch CR which should be skipped
+        cr = setup_cr("TemporaryPatch")
+
+        # Patch setup_directory as that's tested separately and manually create
+        # the module directory
+        with library_config():
+            create_module_dir(vcs_directory)
+            rm.setup_vcs(cr)
+
+        # Assert that the cwd is unaffected
+        assert os.getcwd() == current_cwd
+        assert sys.path == current_path
+
+
 ######################
 ## setup_controller ##
 ######################

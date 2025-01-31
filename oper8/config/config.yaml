@@ -140,6 +140,9 @@ pod_name: ""
 # Version Control System Config
 vcs:
   enabled: false
+  # If kind_regex is provided then only Kind's that match that regex will be checked out.
+  # The default regex ignores temporary patches since they are unversioned
+  kind_regex: "^((?!TemporaryPatch).*)$"
 
   # Source and destination directories
   repo: null

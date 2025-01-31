@@ -168,6 +168,8 @@ class ReconcileManager:  # pylint: disable=too-many-lines
                 "Must provide vcs.field with strict_versioning=True",
             )
 
+        self.vcs_kind_regex = re.compile(config.vcs.kind_regex or ".*")
+
         self.deploy_manager = deploy_manager
         self.reimport_controller = reimport_controller
 
@@ -407,6 +409,10 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             cr_manifest: aconfig.Config
                 The cr manifest to pull the requested version from.
         """
+        if not self.vcs_kind_regex.match(cr_manifest.get("kind", "")):
+            log.debug("Skipping vcs checkout due to kind regex")
+            return
+
         version = get_manifest_version(cr_manifest)
         if not version:
             raise ValueError("CR Manifest has no version")
