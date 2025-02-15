@@ -2,8 +2,19 @@
 
 The oper8 architecture is focused on allowing users to implement exactly what their operator needs while making the operator logic "just work" behind the scenes.
 
-<!-- TODO put architecture diagram -->
+<!-- TODO architecture diagram -->
 <!-- Maybe use mermaid? or png -->
+
+<!-- TODO replace with actual diagram -->
+
+```mermaid
+graph LR
+  A[Start] --> B{Error?};
+  B -->|Yes| C[Hmm...];
+  C --> D[Debug];
+  D --> B;
+  B ---->|No| E[Yay!];
+```
 
 ## Definitions
 
