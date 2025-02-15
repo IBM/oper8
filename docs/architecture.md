@@ -1,5 +1,7 @@
 # Architecture
 
+The oper8 architecture is focused on allowing users to implement exactly what their operator needs while making the operator logic "just work" behind the scenes.
+
 <!-- TODO put architecture diagram -->
 <!-- Maybe use mermaid? or png -->
 
@@ -22,8 +24,6 @@
 <!-- TODO put link to component class -->
 
 ### `Session`
-
-<!-- TODO -->
 
 A `Session` contains the state of the current reconciliation (1 `Session` == 1 reconciliation). A `Session` is shared across all related objects which associate with the same reconciliation. For instance, users can implement a `controller` method which get some `component` status, and then use that information to modify other `component` by leveraging a `session`. `Session` also serves as a gateway to use `DeployManager` which `get` or `set` objects inside of the k8s cluster.
 
