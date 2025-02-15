@@ -25,11 +25,7 @@
 
 <!-- TODO -->
 
-A `Session` contains the state of the current reconciliation (1 `Session` == 1 reconciliation). A `Session` is shared across all related objects which associate with the same reconciliation.
-
-For instance, users can implement a `controller` method which get some `component` status, and then use that information to modify other `component`.
-
-`Session` also serves as a gateway to use `DeployManager` which `get` or `set` objects inside of the k8s cluster.
+A `Session` contains the state of the current reconciliation (1 `Session` == 1 reconciliation). A `Session` is shared across all related objects which associate with the same reconciliation. For instance, users can implement a `controller` method which get some `component` status, and then use that information to modify other `component` by leveraging a `session`. `Session` also serves as a gateway to use `DeployManager` which `get` or `set` objects inside of the k8s cluster.
 
 ### `DeployManager`
 
@@ -41,17 +37,11 @@ A `WatchManager` module implements an abstract interface for regstering `Control
 
 ### `Component`
 
-A `Component` is an atomic grouping of raw `kubernetes` resources that serves a single purpose.
-
-For instance, a standard microservice will consist of a `Deployment`, a `Secret` and a `Service`. These would all be grouped into a single `Component` as creating any of them in isolation would not make sense.
+A `Component` is an atomic grouping of raw `kubernetes` resources that serves a single purpose. For instance, a standard microservice will consist of a `Deployment`, a `Secret` and a `Service`. These would all be grouped into a single `Component` as creating any of them in isolation would not make sense.
 
 ### `Controller`
 
-A `Controller` is the core object type that manges the mapping from a CR instance to the set of `Component`.
-
-A `Controller` is bound to **exactly one CR** by specifying `group/version/kind`, and define associated `Component(s)`.
-
-A `Controller` performs `reconciliation` when the corresponding `watch` event is triggered.
+A `Controller` is the core object type that manges the mapping from a CR instance to the set of `Component`. A `Controller` is bound to **exactly one CR** by specifying `group/version/kind`, and define associated `Component(s)`. A `Controller` performs `reconciliation` when the corresponding `watch` event is triggered.
 
 ## Typical Development Flow
 
@@ -61,11 +51,11 @@ First, conceptualize your CR and related k8s resources into oper8 abstractions.
 
 - What is your main CR?
 - What k8s resources your CR needs? How they can be grouped as `Component`?
-- What is the relation ship between each `components`?
+- What are the dependency relationships between each `components`?
 - What kind of reconciliation logic you need for the CR?
 
 Then, implement your application with `oper8`.
 
-Typically, user defines `Components` and a `Controller` for the target CR. Then use the `session` to get/set k8s objects in the cluster and share the information across related `components` or use it to customize `reconciliation` logic.
+Typically, user defines `Components` and a `Controller` for the target CR. Then use the `session` with `component` or `controller` to get/set k8s objects in the cluster and use it to customize `reconciliation` logic.
 
 The user rarely need to modify `WatchManager` or `DeployManager`.
