@@ -236,23 +236,34 @@ class Runner:  # pylint: disable=too-many-instance-attributes
             self._verified_nodes.append(node)
 
     def _dependency_satisfied(self, dep: "Node", verify_fn: Callable = None) -> bool:
-        # A dependency is satisfied if
-        # a) The upstream has been deployed and no verification function is
-        #       given for the dependency
-        # b) The upstream has been deployed and the given verification
-        #       function passes
+        """
+        Check if the given dependency is satisfied. A dependency is satisfied if:
+        - a) The upstream has been deployed and no verification function `verify_fn` is
+           given for the dependency
+        - b) The upstream has been deployed and the given verification
+           function `verify_fn` passes
+
+        Parameters:
+        dep (Node): The dependency to check.
+        verify_fn (Callable, optional): A verification function to call. Defaults to None.
+
+        Returns:
+        bool: True if the dependency is satisfied, False otherwise.
+        """
         dep_name = dep.get_name()
         if dep not in self._verified_nodes:
             log.debug4("%s not yet verified", dep_name)
             return False
 
+        # Runner initialized with upstream verification disabled.
         if not self._verify_upstream:
             log.debug3("%s verified without checking", dep_name)
             return True
+
+        # Run the custom verification function if provided and return the result.
         if verify_fn is None:
             log.debug4("%s verified with no verify_fn", dep_name)
             return True
-
         log.debug4("%s calling verify_fn", dep_name)
         satisfied = verify_fn()
         log.debug4("%s verify_fn() -> %s", dep_name, satisfied)
