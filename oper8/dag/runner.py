@@ -2,7 +2,6 @@
 This module contains a collection of classes for executing functions along a DAG
 """
 
-
 # Standard
 from concurrent.futures import Executor, Future, ThreadPoolExecutor
 from typing import Callable, List, Optional
@@ -260,6 +259,12 @@ class Runner:  # pylint: disable=too-many-instance-attributes
         return satisfied
 
     def _get_ready_nodes(self) -> List[str]:
+        """
+        Get the list of nodes whose dependencies (upstream) are satisfied and ready to be executed,
+
+        Returns:
+            List[str]: A list of node names that are ready to be executed.
+        """
         ready_nodes = []
         for node in [
             n for n in self._get_runnable_nodes() if n not in self._started_nodes
@@ -271,8 +276,12 @@ class Runner:  # pylint: disable=too-many-instance-attributes
                 (self._dependency_satisfied(dep, verify_fn), dep)
                 for dep, verify_fn in node_deps
             ]
+
+            # If all dependencies are satisfied, the node is ready.
             if all(res[0] for res in satisfied_dependencies):
                 ready_nodes.append(node)
+
+            # Otherwise wait for the dependencies (upstream) to be satisfied.
             else:
                 log.debug3(
                     "[%s] waiting on upstreams: %s",
