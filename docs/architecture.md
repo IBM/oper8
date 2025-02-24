@@ -70,3 +70,14 @@ Then, implement your application with `oper8`.
 Typically, user defines `Components` and a `Controller` for the target CR. Then use the `session` with `component` or `controller` to get/set k8s objects in the cluster and use it to customize `reconciliation` logic.
 
 The user rarely need to modify `WatchManager` or `DeployManager`.
+
+## Reconciliation
+
+The `reconcile` entry point is `Controller.run_reconcile()` which then triggers the following steps in high level:
+
+1. **Construct The Session**: Set up the immutable `Session` object that will be passed through the rest of the rollout
+2. **Construct the DAG (Directed acyclic graph) based on components dependencies**: User defined components described in `Controller.setup_components()` and `Session.add_component_dependency()` are in the end converted into DAG so that `oper8` can deploy them from upstream components.
+3. **Run the `Component.deploy()` in DAG**: In dependency order, invoke `deploy` on each `Component`, halting if any `Component` terminates with an unsuccessful state. This may be caused by an expected error (prerequisite resource not found in the cluster), or an unexpected error (unstable cluster).
+4. **Run user defined `Controller.after_deploy()` or `Controller.after_deploy_unsuccessful()`**: User-defined `Controllers` may define custom logic to run after the `deploy` DAG has completed successfully, but before the `verify` DAG runs. Note this is not one component level like `Component.deploy()`. This runs after all components deployments are finished.
+5. **Run the `Component.verify()` in DAG**: If the `deploy` DAG completes all `Components` successfully, the same DAG is invoked to run the `verify` function of each `Component`.
+6. **Run user defined `Controller.after_verify()` or `Controller.after_verify_unsuccessful()`**: User-defined `Controllers` may define custom logic to run after all components verify DAG is completed. This is primarily useful for custom readiness checks that requires the entire application to be ready.
