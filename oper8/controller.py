@@ -190,10 +190,10 @@ class Controller(abc.ABC):
         """
         return True
 
-    # TODO get verify_completion_state
     def after_verify(
         self,
         session: Session,  # pylint: disable=unused-argument
+        verify_completion_state: CompletionState
     ) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished verifying all components. The default behavior
@@ -202,6 +202,8 @@ class Controller(abc.ABC):
         Args:
             session:  Session
                 The current reconciliation session
+            verify_completion_state: CompletionState
+                Completion state of the last verification
 
         Returns:
             success:  bool
@@ -210,7 +212,7 @@ class Controller(abc.ABC):
         """
         return True
 
-    def after_verify_unsuccessful(self, session: Session, failed: bool) -> bool:
+    def after_verify_unsuccessful(self, session: Session, failed: bool, verify_completion_state: CompletionState) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished deploying all components but failed to verify.
         The default behavior is a no-op.
@@ -220,6 +222,8 @@ class Controller(abc.ABC):
                 The current reconciliation session
             failed:  bool
                 Indicator of whether or not the termination was a failure
+            verify_completion_state: CompletionState
+                Completion state of the last verification
 
         Returns:
             success:  bool

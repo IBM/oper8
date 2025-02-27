@@ -436,7 +436,7 @@ class RolloutManager:
             log.debug("Running after-verify-unsuccessful")
             try:
                 is_after_verify_unsuccessful_completed = (
-                    self._after_verify_unsuccessful(self._session, phase3_failed)
+                    self._after_verify_unsuccessful(self._session, phase3_failed, verify_completion_state)
                 )
                 if not is_after_verify_unsuccessful_completed:
                     phase4_exception = VerificationError(
@@ -450,7 +450,7 @@ class RolloutManager:
         if phase3_complete and self._after_verify:
             log.debug("Running after-verify")
             try:
-                phase4_complete = self._after_verify(self._session)
+                phase4_complete = self._after_verify(self._session, verify_completion_state)
                 if not phase4_complete:
                     phase4_exception = VerificationError("After-verify failed")
             except Exception as err:  # pylint: disable=broad-except
