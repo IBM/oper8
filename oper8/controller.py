@@ -152,7 +152,7 @@ class Controller(abc.ABC):
                 The current session containing the per-event configs
         """
 
-    def after_deploy(self, session: Session) -> bool:
+    def after_deploy(self, session: Session, deploy_completion_state: CompletionState) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished deploying all components, but not necessarily
         verifying all of them. The default behavior is a no-op.
@@ -160,6 +160,8 @@ class Controller(abc.ABC):
         Args:
             session:  Session
                 The current reconciliation session
+            deploy_completion_state: CompletionState
+                Completion state of the last deployment
 
         Returns:
             success:  bool
@@ -168,7 +170,7 @@ class Controller(abc.ABC):
         """
         return True
 
-    def after_deploy_unsuccessful(self, session: Session, failed: bool) -> bool:
+    def after_deploy_unsuccessful(self, session: Session, failed: bool, deploy_completion_state: CompletionState) -> bool:
         """This allows children to inject logic that will run when the
         controller has failed or could not finish deploying all components.
         The default behavior is a no-op.
@@ -178,6 +180,8 @@ class Controller(abc.ABC):
                 The current reconciliation session
             failed:  bool
                 Indicator of whether or not the termination was a failure
+            deploy_completion_state: CompletionState
+                Completion state of the last deployment
 
         Returns:
             success:  bool
@@ -186,6 +190,7 @@ class Controller(abc.ABC):
         """
         return True
 
+    # TODO get verify_completion_state
     def after_verify(
         self,
         session: Session,  # pylint: disable=unused-argument
