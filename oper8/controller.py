@@ -152,7 +152,9 @@ class Controller(abc.ABC):
                 The current session containing the per-event configs
         """
 
-    def after_deploy(self, session: Session, deploy_completion_state: CompletionState) -> bool:
+    def after_deploy(
+        self, session: Session, deploy_completion_state: CompletionState
+    ) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished deploying all components, but not necessarily
         verifying all of them. The default behavior is a no-op.
@@ -170,7 +172,9 @@ class Controller(abc.ABC):
         """
         return True
 
-    def after_deploy_unsuccessful(self, session: Session, failed: bool, deploy_completion_state: CompletionState) -> bool:
+    def after_deploy_unsuccessful(
+        self, session: Session, failed: bool, deploy_completion_state: CompletionState
+    ) -> bool:
         """This allows children to inject logic that will run when the
         controller has failed or could not finish deploying all components.
         The default behavior is a no-op.
@@ -193,7 +197,7 @@ class Controller(abc.ABC):
     def after_verify(
         self,
         session: Session,  # pylint: disable=unused-argument
-        verify_completion_state: CompletionState
+        verify_completion_state: CompletionState,
     ) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished verifying all components. The default behavior
@@ -212,7 +216,9 @@ class Controller(abc.ABC):
         """
         return True
 
-    def after_verify_unsuccessful(self, session: Session, failed: bool, verify_completion_state: CompletionState) -> bool:
+    def after_verify_unsuccessful(
+        self, session: Session, failed: bool, verify_completion_state: CompletionState
+    ) -> bool:
         """This allows children to inject logic that will run when the
         controller has finished deploying all components but failed to verify.
         The default behavior is a no-op.

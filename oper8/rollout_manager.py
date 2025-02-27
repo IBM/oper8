@@ -326,7 +326,9 @@ class RolloutManager:
             log.debug2("Running after-deploy-unsuccessful")
             try:
                 is_after_deploy_unsuccessful_completed = (
-                    self._after_deploy_unsuccessful(self._session, phase1_failed, deploy_completion_state)
+                    self._after_deploy_unsuccessful(
+                        self._session, phase1_failed, deploy_completion_state
+                    )
                 )
                 if not is_after_deploy_unsuccessful_completed:
                     phase2_exception = VerificationError(
@@ -344,7 +346,9 @@ class RolloutManager:
         if phase1_complete and self._after_deploy:
             log.debug2("Running after-deploy")
             try:
-                phase2_complete = self._after_deploy(self._session, deploy_completion_state)
+                phase2_complete = self._after_deploy(
+                    self._session, deploy_completion_state
+                )
                 if not phase2_complete:
                     phase2_exception = VerificationError(
                         "After-deploy verification failed"
@@ -436,7 +440,9 @@ class RolloutManager:
             log.debug("Running after-verify-unsuccessful")
             try:
                 is_after_verify_unsuccessful_completed = (
-                    self._after_verify_unsuccessful(self._session, phase3_failed, verify_completion_state)
+                    self._after_verify_unsuccessful(
+                        self._session, phase3_failed, verify_completion_state
+                    )
                 )
                 if not is_after_verify_unsuccessful_completed:
                     phase4_exception = VerificationError(
@@ -450,7 +456,9 @@ class RolloutManager:
         if phase3_complete and self._after_verify:
             log.debug("Running after-verify")
             try:
-                phase4_complete = self._after_verify(self._session, verify_completion_state)
+                phase4_complete = self._after_verify(
+                    self._session, verify_completion_state
+                )
                 if not phase4_complete:
                     phase4_exception = VerificationError("After-verify failed")
             except Exception as err:  # pylint: disable=broad-except
