@@ -6,6 +6,7 @@ dependency management for rollout
 # Standard
 from functools import partial
 from typing import Callable, Optional
+import inspect
 
 # First Party
 import alog
@@ -18,6 +19,9 @@ from .exceptions import Oper8Error, VerificationError
 from .session import Session
 
 log = alog.use_channel("ROLMGR")
+# New argument introduced at oper8 v0.1.33 for after_deploy or after_verify functions.
+DEPLOY_COMPLETION_STATE_ARG_NAME = "deploy_completion_state"
+VERIFY_COMPLETION_STATE_ARG_NAME = "verify_completion_state"
 
 ## Rollout Functions ###########################################################
 
@@ -325,11 +329,24 @@ class RolloutManager:
         if (not phase1_complete or phase1_failed) and self._after_deploy_unsuccessful:
             log.debug2("Running after-deploy-unsuccessful")
             try:
-                is_after_deploy_unsuccessful_completed = (
-                    self._after_deploy_unsuccessful(
-                        self._session, phase1_failed, deploy_completion_state
+                # Check DEPLOY_COMPLETION_STATE_ARG_NAME argument for backward compatibility.
+                if (
+                    DEPLOY_COMPLETION_STATE_ARG_NAME
+                    in inspect.signature(self._after_deploy_unsuccessful).parameters
+                ):
+                    is_after_deploy_unsuccessful_completed = (
+                        self._after_deploy_unsuccessful(
+                            self._session, phase1_failed, deploy_completion_state
+                        )
                     )
-                )
+                else:
+                    log.warning(
+                        "Detected old after_deploy function. Please migrate oper8 to ^0.1.33."
+                    )
+                    is_after_deploy_unsuccessful_completed = (
+                        self._after_deploy_unsuccessful(self._session, phase1_failed)
+                    )
+
                 if not is_after_deploy_unsuccessful_completed:
                     phase2_exception = VerificationError(
                         "After-deploy-unsuccessful verification failed"
@@ -346,9 +363,19 @@ class RolloutManager:
         if phase1_complete and self._after_deploy:
             log.debug2("Running after-deploy")
             try:
-                phase2_complete = self._after_deploy(
-                    self._session, deploy_completion_state
-                )
+                if (
+                    DEPLOY_COMPLETION_STATE_ARG_NAME
+                    in inspect.signature(self._after_deploy).parameters
+                ):
+                    phase2_complete = self._after_deploy(
+                        self._session, deploy_completion_state
+                    )
+                else:
+                    log.warning(
+                        "Detected old after_deploy function. Please migrate oper8 to ^0.1.33."
+                    )
+                    phase2_complete = self._after_deploy(self._session)
+
                 if not phase2_complete:
                     phase2_exception = VerificationError(
                         "After-deploy verification failed"
@@ -439,11 +466,23 @@ class RolloutManager:
         ) and self._after_verify_unsuccessful:
             log.debug("Running after-verify-unsuccessful")
             try:
-                is_after_verify_unsuccessful_completed = (
-                    self._after_verify_unsuccessful(
-                        self._session, phase3_failed, verify_completion_state
+                if (
+                    VERIFY_COMPLETION_STATE_ARG_NAME
+                    in inspect.signature(self._after_verify_unsuccessful).parameters
+                ):
+                    is_after_verify_unsuccessful_completed = (
+                        self._after_verify_unsuccessful(
+                            self._session, phase3_failed, verify_completion_state
+                        )
                     )
-                )
+                else:
+                    log.warning(
+                        "Detected old after_verify function. Please migrate oper8 to ^0.1.33."
+                    )
+                    is_after_verify_unsuccessful_completed = (
+                        self._after_verify_unsuccessful(self._session, phase3_failed)
+                    )
+
                 if not is_after_verify_unsuccessful_completed:
                     phase4_exception = VerificationError(
                         "After-verify-unsuccessful failed"
@@ -456,9 +495,19 @@ class RolloutManager:
         if phase3_complete and self._after_verify:
             log.debug("Running after-verify")
             try:
-                phase4_complete = self._after_verify(
-                    self._session, verify_completion_state
-                )
+                if (
+                    VERIFY_COMPLETION_STATE_ARG_NAME
+                    in inspect.signature(self._after_verify).parameters
+                ):
+                    phase4_complete = self._after_verify(
+                        self._session, verify_completion_state
+                    )
+                else:
+                    log.warning(
+                        "Detected old after_verify function. Please migrate oper8 to ^0.1.33."
+                    )
+                    phase4_complete = self._after_verify(self._session)
+
                 if not phase4_complete:
                     phase4_exception = VerificationError("After-verify failed")
             except Exception as err:  # pylint: disable=broad-except
