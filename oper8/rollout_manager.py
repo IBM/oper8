@@ -459,7 +459,10 @@ class RolloutManager:
                 try:
                     is_after_verify_unsuccessful_completed = (
                         self._after_verify_unsuccessful(
-                            self._session, phase3_failed, verify_completion_state
+                            self._session,
+                            phase3_failed,
+                            verify_completion_state,
+                            deploy_completion_state,
                         )
                     )
                 except TypeError:
@@ -484,7 +487,7 @@ class RolloutManager:
             try:
                 try:
                     phase4_complete = self._after_verify(
-                        self._session, verify_completion_state
+                        self._session, verify_completion_state, deploy_completion_state
                     )
                 except TypeError:
                     log.warning(
