@@ -5,6 +5,7 @@ Test the rollout manager's functionality
 # Standard
 from functools import partial
 from unittest import mock
+import logging
 import time
 
 # Third Party
@@ -22,6 +23,7 @@ from oper8.exceptions import (
     VerificationError,
 )
 from oper8.rollout_manager import RolloutManager
+from oper8.session import Session
 from oper8.test_helpers.helpers import (
     DummyController,
     DummyNodeComponent,
@@ -513,6 +515,167 @@ class TestRolloutManager:
 
         assert isinstance(completion_state.exception, VerificationError)
 
+    def test_after_deploy_forward_compatibility(self, caplog):
+        """
+        New arguments are introduced to after_deploy/after_verify callbacks with oper8 v0.1.33.
+        Test if the new argument is received with new callbacks, and old callbacks can still be used without it.
+        """
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+        comp = DummyRolloutComponent("A")(session)
+
+        # Prepare mock functions.
+        def new_after_deploy(
+            session: Session, deploy_completion_state: CompletionState
+        ) -> bool:
+            assert isinstance(session, Session)
+            assert isinstance(deploy_completion_state, CompletionState)
+            return False
+
+        mock_new_after_deploy = mock.Mock()
+        mock_new_after_deploy.new_after_deploy.side_effect = new_after_deploy
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+
+        # Run rollout.
+        mgr = RolloutManager(
+            session,
+            after_deploy=mock_new_after_deploy.new_after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+        )
+        completion_state = mgr.rollout()
+        log.debug2(completion_state)
+
+        assert isinstance(completion_state.exception, VerificationError)
+        assert "Please migrate" not in caplog.text
+
+        assert mock_new_after_deploy.new_after_deploy.called
+        assert not after_deploy_unsuccessful.called
+
+    def test_after_deploy_backward_compatibility(self, caplog):
+        """
+        New arguments are introduced to after_deploy/after_verify callbacks with oper8 v0.1.33.
+        Test if the new argument is received with new callbacks, and old callbacks can still be used without it.
+        """
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+        comp = DummyRolloutComponent("A")(session)
+
+        # Prepare mock functions.
+        def old_after_deploy(session: Session) -> bool:
+            assert isinstance(session, Session)
+            return False
+
+        mock_old_after_deploy = mock.Mock()
+        mock_old_after_deploy.old_after_deploy.side_effect = old_after_deploy
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+
+        # Run rollout.
+        mgr = RolloutManager(
+            session,
+            after_deploy=mock_old_after_deploy.old_after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+        )
+        completion_state = mgr.rollout()
+        log.debug2(completion_state)
+
+        # Should warn user to migrate if old after_deploy function is used.
+        assert "Please migrate" in caplog.text
+        assert isinstance(completion_state.exception, VerificationError)
+
+        assert mock_old_after_deploy.old_after_deploy.called
+        assert not after_deploy_unsuccessful.called
+
+    def test_after_deploy_unsuccessful_forward_compatibility(self, caplog):
+        """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
+        and after_verify_unsuccessful hooks are executed when deploy is incomplete."""
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+
+        # Set up a linear set of components and configure the second-to-last to
+        # fail during deploy.
+        #
+        #    A -> B -x C
+        comp_a = DummyRolloutComponent("A")(session)
+        comp_b = DummyRolloutComponent("B")(session, deploy_fail=RuntimeError)
+        comp_c = DummyRolloutComponent("C")(session)
+        comps = [comp_a, comp_b, comp_c]
+        for i, comp in enumerate(comps[1:]):
+            session.add_component_dependency(comp, comps[i])
+
+        # Setup callbacks.
+        after_deploy = mock.Mock(return_value=True)
+
+        def new_after_deploy_unsuccessful(
+            session: Session, failed: bool, deploy_completion_state: CompletionState
+        ) -> bool:
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
+            assert isinstance(deploy_completion_state, CompletionState)
+            return False
+
+        mock_new_after_deploy_unsuccessful = mock.Mock()
+        mock_new_after_deploy_unsuccessful.new_after_deploy_unsuccessful.side_effect = (
+            new_after_deploy_unsuccessful
+        )
+
+        # Create the rollout manager and run the rollout
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=mock_new_after_deploy_unsuccessful.new_after_deploy_unsuccessful,
+        )
+        mgr.rollout()
+
+        assert "Please migrate" not in caplog.text
+
+        # Check the callbacks.
+        assert not after_deploy.called
+        assert mock_new_after_deploy_unsuccessful.new_after_deploy_unsuccessful.called
+
+    def test_after_deploy_unsuccessful_backward_compatibility(self, caplog):
+        """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
+        and after_verify_unsuccessful hooks are executed when deploy is incomplete."""
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+
+        # Set up a linear set of components and configure the second-to-last to
+        # fail during deploy.
+        #
+        #    A -> B -x C
+        comp_a = DummyRolloutComponent("A")(session)
+        comp_b = DummyRolloutComponent("B")(session, deploy_fail=RuntimeError)
+        comp_c = DummyRolloutComponent("C")(session)
+        comps = [comp_a, comp_b, comp_c]
+        for i, comp in enumerate(comps[1:]):
+            session.add_component_dependency(comp, comps[i])
+
+        # Setup callbacks.
+        after_deploy = mock.Mock(return_value=True)
+
+        def old_after_deploy_unsuccessful(session: Session, failed: bool) -> bool:
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
+            return False
+
+        mock_old_after_deploy_unsuccessful = mock.Mock()
+        mock_old_after_deploy_unsuccessful.old_after_deploy_unsuccessful.side_effect = (
+            old_after_deploy_unsuccessful
+        )
+
+        # Create the rollout manager and run the rollout
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=mock_old_after_deploy_unsuccessful.old_after_deploy_unsuccessful,
+        )
+        mgr.rollout()
+
+        assert "Please migrate" in caplog.text
+
+        # Check the callbacks.
+        assert not after_deploy.called
+        assert mock_old_after_deploy_unsuccessful.old_after_deploy_unsuccessful.called
+
     def test_after_deploy_non_oper8_error(self):
         """Test that when after_deploy raises a non-oper8 error, the rollout is
         considered a failure
@@ -656,6 +819,209 @@ class TestRolloutManager:
         assert not after_verify_unsuccessful.called
 
         assert isinstance(completion_state.exception, VerificationError)
+
+    def test_after_verify_forward_compatibility(self, caplog):
+        """Test that when after_verify returns false, a VerificationError is
+        added to the the completion state
+        """
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+        comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+
+        def new_after_verify(
+            session: Session,
+            verify_completion_state: CompletionState,
+            deploy_completion_state: CompletionState,
+        ):
+            assert isinstance(session, Session)
+            assert isinstance(verify_completion_state, CompletionState)
+            assert isinstance(deploy_completion_state, CompletionState)
+            return False
+
+        mock_new_after_verify = mock.Mock()
+        mock_new_after_verify.new_after_verify.side_effect = new_after_verify
+
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=mock_new_after_verify.new_after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
+        completion_state = mgr.rollout()
+        log.debug2(completion_state)
+        assert completion_state.deploy_completed()
+        assert not completion_state.verify_completed()
+        assert not completion_state.failed()
+
+        assert "Please migrate" not in caplog.text
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert mock_new_after_verify.new_after_verify.called
+        assert not after_verify_unsuccessful.called
+
+        assert isinstance(completion_state.exception, VerificationError)
+
+    def test_after_verify_backward_compatibility(self, caplog):
+        """Test that when after_verify returns false, a VerificationError is
+        added to the the completion state
+        """
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+        comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+
+        def old_after_verify(
+            session: Session,
+        ):
+            assert isinstance(session, Session)
+            return False
+
+        mock_old_after_verify = mock.Mock()
+        mock_old_after_verify.old_after_verify.side_effect = old_after_verify
+
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=mock_old_after_verify.old_after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
+        completion_state = mgr.rollout()
+        log.debug2(completion_state)
+        assert completion_state.deploy_completed()
+        assert not completion_state.verify_completed()
+        assert not completion_state.failed()
+
+        assert "Please migrate" in caplog.text
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert mock_old_after_verify.old_after_verify.called
+        assert not after_verify_unsuccessful.called
+
+        assert isinstance(completion_state.exception, VerificationError)
+
+    def test_after_verify_unsuccessful_forward_compatibility(self, caplog):
+        """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
+        and after_verify_unsuccessful hooks are executed when deploy is incomplete."""
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+
+        # Set up a linear set of components and configure the second-to-last to
+        # fail during deploy.
+        #
+        #    A -> B -x C
+        comp_a = DummyRolloutComponent("A")(session)
+        comp_b = DummyRolloutComponent("B")(session, verify_fail=True)
+        comp_c = DummyRolloutComponent("C")(session)
+        comps = [comp_a, comp_b, comp_c]
+        for i, comp in enumerate(comps[1:]):
+            session.add_component_dependency(comp, comps[i])
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+
+        def new_after_verify_unsuccessful(
+            session: Session,
+            failed: bool,
+            verify_completion_state: CompletionState,
+            deploy_completion_state: CompletionState,
+        ) -> bool:
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
+            assert isinstance(verify_completion_state, CompletionState)
+            assert isinstance(deploy_completion_state, CompletionState)
+            return False
+
+        mock_new_after_verify_unsuccessful = mock.Mock()
+        mock_new_after_verify_unsuccessful.new_after_verify_unsuccessful.side_effect = (
+            new_after_verify_unsuccessful
+        )
+
+        # Create the rollout manager and run the rollout
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=mock_new_after_verify_unsuccessful.new_after_verify_unsuccessful,
+        )
+        completion_state = mgr.rollout()
+        assert completion_state.deploy_completed()
+        assert not completion_state.verify_completed()
+
+        assert "Please migrate" not in caplog.text
+
+        # Check the callbacks.
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert mock_new_after_verify_unsuccessful.new_after_verify_unsuccessful.called
+
+    def test_after_verify_unsuccessful_backward_compatibility(self, caplog):
+        """Test the correct after_deploy, after_deploy_unsuccessful, after_verify,
+        and after_verify_unsuccessful hooks are executed when deploy is incomplete."""
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+
+        # Set up a linear set of components and configure the second-to-last to
+        # fail during deploy.
+        #
+        #    A -> B -x C
+        comp_a = DummyRolloutComponent("A")(session)
+        comp_b = DummyRolloutComponent("B")(session, verify_fail=True)
+        comp_c = DummyRolloutComponent("C")(session)
+        comps = [comp_a, comp_b, comp_c]
+        for i, comp in enumerate(comps[1:]):
+            session.add_component_dependency(comp, comps[i])
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+        after_verify = mock.Mock(return_value=True)
+
+        def old_after_verify_unsuccessful(session: Session, failed: bool) -> bool:
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
+            return False
+
+        mock_old_after_verify_unsuccessful = mock.Mock()
+        mock_old_after_verify_unsuccessful.old_after_verify_unsuccessful.side_effect = (
+            old_after_verify_unsuccessful
+        )
+
+        # Create the rollout manager and run the rollout
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=after_verify,
+            after_verify_unsuccessful=mock_old_after_verify_unsuccessful.old_after_verify_unsuccessful,
+        )
+        completion_state = mgr.rollout()
+        assert completion_state.deploy_completed()
+        assert not completion_state.verify_completed()
+
+        assert "Please migrate" in caplog.text
+
+        # Check the callbacks.
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert not after_verify.called
+        assert mock_old_after_verify_unsuccessful.old_after_verify_unsuccessful.called
 
     def test_after_verify_non_oper8_error(self):
         """Test that when after_verify raises a non-oper8 error, the rollout is
