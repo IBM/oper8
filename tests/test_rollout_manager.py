@@ -515,7 +515,6 @@ class TestRolloutManager:
 
         assert isinstance(completion_state.exception, VerificationError)
 
-    # TODO test after_deploy forward and backward compatibility.
     def test_after_deploy_forward_compatibility(self, caplog):
         """
         New arguments are introduced to after_deploy/after_verify callbacks with oper8 v0.1.33.
@@ -723,6 +722,98 @@ class TestRolloutManager:
         assert after_deploy.called
         assert not after_deploy_unsuccessful.called
         assert after_verify.called
+        assert not after_verify_unsuccessful.called
+
+        assert isinstance(completion_state.exception, VerificationError)
+
+    def test_after_verify_forward_compatibility(self, caplog):
+        """Test that when after_verify returns false, a VerificationError is
+        added to the the completion state
+        """
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+        comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+
+        def new_after_verify(
+                session: Session, 
+                verify_completion_state: CompletionState,
+                deploy_completion_state: CompletionState
+            ):
+            assert session is not None
+            assert verify_completion_state is not None
+            assert deploy_completion_state is not None
+            return False
+        mock_new_after_verify = mock.Mock()
+        mock_new_after_verify.new_after_verify.side_effect = new_after_verify
+
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=mock_new_after_verify.new_after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
+        completion_state = mgr.rollout()
+        log.debug2(completion_state)
+        assert completion_state.deploy_completed()
+        assert not completion_state.verify_completed()
+        assert not completion_state.failed()
+
+        assert "Please migrate" not in caplog.text
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert mock_new_after_verify.new_after_verify.called
+        assert not after_verify_unsuccessful.called
+
+        assert isinstance(completion_state.exception, VerificationError)
+
+    def test_after_verify_backward_compatibility(self, caplog):
+        """Test that when after_verify returns false, a VerificationError is
+        added to the the completion state
+        """
+        caplog.set_level(logging.WARNING)
+        session = setup_session()
+        comp = DummyRolloutComponent("A")(session)
+
+        after_deploy = mock.Mock(return_value=True)
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+
+        def old_after_verify(
+                session: Session, 
+            ):
+            assert session is not None
+            return False
+        mock_old_after_verify = mock.Mock()
+        mock_old_after_verify.old_after_verify.side_effect = old_after_verify
+
+        after_verify_unsuccessful = mock.Mock(return_value=True)
+
+        mgr = RolloutManager(
+            session,
+            after_deploy=after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+            after_verify=mock_old_after_verify.old_after_verify,
+            after_verify_unsuccessful=after_verify_unsuccessful,
+        )
+
+        completion_state = mgr.rollout()
+        log.debug2(completion_state)
+        assert completion_state.deploy_completed()
+        assert not completion_state.verify_completed()
+        assert not completion_state.failed()
+
+        assert "Please migrate" in caplog.text
+
+        assert after_deploy.called
+        assert not after_deploy_unsuccessful.called
+        assert mock_old_after_verify.old_after_verify.called
         assert not after_verify_unsuccessful.called
 
         assert isinstance(completion_state.exception, VerificationError)
