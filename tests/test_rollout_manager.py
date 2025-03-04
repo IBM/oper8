@@ -5,8 +5,8 @@ Test the rollout manager's functionality
 # Standard
 from functools import partial
 from unittest import mock
-import time
 import logging
+import time
 
 # Third Party
 import pytest
@@ -525,10 +525,13 @@ class TestRolloutManager:
         comp = DummyRolloutComponent("A")(session)
 
         # Prepare mock functions.
-        def new_after_deploy(session: Session, deploy_completion_state: CompletionState) -> bool:
+        def new_after_deploy(
+            session: Session, deploy_completion_state: CompletionState
+        ) -> bool:
             assert session is not None
             assert deploy_completion_state is not None
             return False
+
         mock_new_after_deploy = mock.Mock()
         mock_new_after_deploy.new_after_deploy.side_effect = new_after_deploy
         after_deploy_unsuccessful = mock.Mock(return_value=True)
@@ -561,6 +564,7 @@ class TestRolloutManager:
         def old_after_deploy(session: Session) -> bool:
             assert session is not None
             return False
+
         mock_old_after_deploy = mock.Mock()
         mock_old_after_deploy.old_after_deploy.side_effect = old_after_deploy
         after_deploy_unsuccessful = mock.Mock(return_value=True)
@@ -573,14 +577,13 @@ class TestRolloutManager:
         )
         completion_state = mgr.rollout()
         log.debug2(completion_state)
-        
+
         # Should warn user to migrate if old after_deploy function is used.
         assert "Please migrate" in caplog.text
         assert isinstance(completion_state.exception, VerificationError)
 
         assert mock_old_after_deploy.old_after_deploy.called
         assert not after_deploy_unsuccessful.called
-
 
     def test_after_deploy_non_oper8_error(self):
         """Test that when after_deploy raises a non-oper8 error, the rollout is
@@ -738,14 +741,15 @@ class TestRolloutManager:
         after_deploy_unsuccessful = mock.Mock(return_value=True)
 
         def new_after_verify(
-                session: Session, 
-                verify_completion_state: CompletionState,
-                deploy_completion_state: CompletionState
-            ):
+            session: Session,
+            verify_completion_state: CompletionState,
+            deploy_completion_state: CompletionState,
+        ):
             assert session is not None
             assert verify_completion_state is not None
             assert deploy_completion_state is not None
             return False
+
         mock_new_after_verify = mock.Mock()
         mock_new_after_verify.new_after_verify.side_effect = new_after_verify
 
@@ -786,10 +790,11 @@ class TestRolloutManager:
         after_deploy_unsuccessful = mock.Mock(return_value=True)
 
         def old_after_verify(
-                session: Session, 
-            ):
+            session: Session,
+        ):
             assert session is not None
             return False
+
         mock_old_after_verify = mock.Mock()
         mock_old_after_verify.old_after_verify.side_effect = old_after_verify
 
