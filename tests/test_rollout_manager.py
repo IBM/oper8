@@ -6,6 +6,7 @@ Test the rollout manager's functionality
 from functools import partial
 from unittest import mock
 import time
+import logging
 
 # Third Party
 import pytest
@@ -515,11 +516,12 @@ class TestRolloutManager:
         assert isinstance(completion_state.exception, VerificationError)
 
     # TODO test after_deploy forward and backward compatibility.
-    def test_after_deploy_forward_compatibility(self):
+    def test_after_deploy_forward_compatibility(self, caplog):
         """
         New arguments are introduced to after_deploy/after_verify callbacks with oper8 v0.1.33.
         Test if the new argument is received with new callbacks, and old callbacks can still be used without it.
         """
+        caplog.set_level(logging.WARNING)
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
 
@@ -540,17 +542,19 @@ class TestRolloutManager:
         )
         completion_state = mgr.rollout()
         log.debug2(completion_state)
-        assert isinstance(completion_state.exception, VerificationError)
 
-        # Check if the expected after_deploy callbacks are called.
+        assert isinstance(completion_state.exception, VerificationError)
+        assert "Please migrate" not in caplog.text
+
         assert mock_new_after_deploy.new_after_deploy.called
         assert not after_deploy_unsuccessful.called
 
-    def test_after_deploy_backward_compatibility(self):
+    def test_after_deploy_backward_compatibility(self, caplog):
         """
         New arguments are introduced to after_deploy/after_verify callbacks with oper8 v0.1.33.
         Test if the new argument is received with new callbacks, and old callbacks can still be used without it.
         """
+        caplog.set_level(logging.WARNING)
         session = setup_session()
         comp = DummyRolloutComponent("A")(session)
 
@@ -570,9 +574,11 @@ class TestRolloutManager:
         )
         completion_state = mgr.rollout()
         log.debug2(completion_state)
+        
+        # Should warn user to migrate if old after_deploy function is used.
+        assert "Please migrate" in caplog.text
         assert isinstance(completion_state.exception, VerificationError)
 
-        # Check if the expected after_deploy callbacks are called.
         assert mock_old_after_deploy.old_after_deploy.called
         assert not after_deploy_unsuccessful.called
 
