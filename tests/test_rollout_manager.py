@@ -528,8 +528,8 @@ class TestRolloutManager:
         def new_after_deploy(
             session: Session, deploy_completion_state: CompletionState
         ) -> bool:
-            assert session is not None
-            assert deploy_completion_state is not None
+            assert isinstance(session, Session)
+            assert isinstance(deploy_completion_state, CompletionState)
             return False
 
         mock_new_after_deploy = mock.Mock()
@@ -562,7 +562,7 @@ class TestRolloutManager:
 
         # Prepare mock functions.
         def old_after_deploy(session: Session) -> bool:
-            assert session is not None
+            assert isinstance(session, Session)
             return False
 
         mock_old_after_deploy = mock.Mock()
@@ -608,9 +608,9 @@ class TestRolloutManager:
         def new_after_deploy_unsuccessful(
             session: Session, failed: bool, deploy_completion_state: CompletionState
         ) -> bool:
-            assert session is not None
-            assert failed is not None
-            assert deploy_completion_state is not None
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
+            assert isinstance(deploy_completion_state, CompletionState)
             return False
 
         mock_new_after_deploy_unsuccessful = mock.Mock()
@@ -653,8 +653,8 @@ class TestRolloutManager:
         after_deploy = mock.Mock(return_value=True)
 
         def old_after_deploy_unsuccessful(session: Session, failed: bool) -> bool:
-            assert session is not None
-            assert failed is not None
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
             return False
 
         mock_old_after_deploy_unsuccessful = mock.Mock()
@@ -836,9 +836,9 @@ class TestRolloutManager:
             verify_completion_state: CompletionState,
             deploy_completion_state: CompletionState,
         ):
-            assert session is not None
-            assert verify_completion_state is not None
-            assert deploy_completion_state is not None
+            assert isinstance(session, Session)
+            assert isinstance(verify_completion_state, CompletionState)
+            assert isinstance(deploy_completion_state, CompletionState)
             return False
 
         mock_new_after_verify = mock.Mock()
@@ -883,7 +883,7 @@ class TestRolloutManager:
         def old_after_verify(
             session: Session,
         ):
-            assert session is not None
+            assert isinstance(session, Session)
             return False
 
         mock_old_after_verify = mock.Mock()
@@ -941,10 +941,10 @@ class TestRolloutManager:
             verify_completion_state: CompletionState,
             deploy_completion_state: CompletionState,
         ) -> bool:
-            assert session is not None
-            assert failed is not None
-            assert verify_completion_state is not None
-            assert deploy_completion_state is not None
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
+            assert isinstance(verify_completion_state, CompletionState)
+            assert isinstance(deploy_completion_state, CompletionState)
             return False
 
         mock_new_after_verify_unsuccessful = mock.Mock()
@@ -994,8 +994,8 @@ class TestRolloutManager:
         after_verify = mock.Mock(return_value=True)
 
         def old_after_verify_unsuccessful(session: Session, failed: bool) -> bool:
-            assert session is not None
-            assert failed is not None
+            assert isinstance(session, Session)
+            assert isinstance(failed, bool)
             return False
 
         mock_old_after_verify_unsuccessful = mock.Mock()
