@@ -22,6 +22,7 @@ from oper8.exceptions import (
     VerificationError,
 )
 from oper8.rollout_manager import RolloutManager
+from oper8.session import Session
 from oper8.test_helpers.helpers import (
     DummyController,
     DummyNodeComponent,
@@ -512,6 +513,39 @@ class TestRolloutManager:
         assert not after_verify_unsuccessful.called
 
         assert isinstance(completion_state.exception, VerificationError)
+
+    # TODO test after_deploy forward and backward compatibility.
+    def test_after_deploy_forward_compatibility(self):
+        """
+        New arguments are introduced to after_deploy/after_verify callbacks with oper8 v0.1.33.
+        Test if the new argument is received with new callbacks, and old callbacks can still be used without it.
+        """
+        session = setup_session()
+        comp = DummyRolloutComponent("A")(session)
+
+        # Prepare mock functions.
+        def new_after_deploy(session: Session, deploy_completion_state: CompletionState) -> bool:
+            assert session is not None
+            assert deploy_completion_state is not None
+            return False
+        mock_new_after_deploy = mock.Mock()
+        mock_new_after_deploy.new_after_deploy.side_effect = new_after_deploy
+        after_deploy_unsuccessful = mock.Mock(return_value=True)
+
+        # Run rollout.
+        mgr = RolloutManager(
+            session,
+            after_deploy=mock_new_after_deploy.new_after_deploy,
+            after_deploy_unsuccessful=after_deploy_unsuccessful,
+        )
+        completion_state = mgr.rollout()
+        log.debug2(completion_state)
+        assert isinstance(completion_state.exception, VerificationError)
+
+        # Check if the expected after_deploy callbacks are called.
+        assert mock_new_after_deploy.new_after_deploy.called
+        assert not after_deploy_unsuccessful.called
+
 
     def test_after_deploy_non_oper8_error(self):
         """Test that when after_deploy raises a non-oper8 error, the rollout is
