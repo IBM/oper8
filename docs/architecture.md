@@ -2,20 +2,6 @@
 
 The oper8 architecture is focused on allowing users to implement exactly what their operator needs while making the operator logic "just work" behind the scenes.
 
-<!-- TODO architecture diagram -->
-<!-- Maybe use mermaid? or png -->
-
-<!-- TODO replace with actual diagram -->
-
-```mermaid
-graph LR
-  A[Start] --> B{Error?};
-  B -->|Yes| C[Hmm...];
-  C --> D[Debug];
-  D --> B;
-  B ---->|No| E[Yay!];
-```
-
 ## Definitions
 
 - `watch`: The `watch` operation is the binding of specific event handling logic to a `group/version/kind`.
@@ -56,14 +42,16 @@ A `Controller` is the core object type that manges the mapping from a CR instanc
 
 ## Reconciliation overview
 
+![architecture overview](./architecture.drawio.png)
+
 The `reconcile` entry point is `Controller.run_reconcile()` which then triggers the following steps in high level:
 
-1. **Construct The Session**: Set up the immutable `Session` object that will be passed through the rest of the rollout
-2. **Construct the DAG (Directed acyclic graph) based on components dependencies**: User defined components described in `Controller.setup_components()` and `Session.add_component_dependency()` are in the end converted into DAG so that `oper8` can deploy them from upstream components.
-3. **Run the `Component.deploy()` in DAG**: In dependency order, invoke `deploy` on each `Component`, halting if any `Component` terminates with an unsuccessful state. This may be caused by an expected error (prerequisite resource not found in the cluster), or an unexpected error (unstable cluster).
-4. **Run user defined `Controller.after_deploy()` or `Controller.after_deploy_unsuccessful()`**: User-defined `Controllers` may define custom logic to run after the `deploy` DAG has completed successfully, but before the `verify` DAG runs. Note this is not one component level like `Component.deploy()`. This runs after all components deployments are finished.
-5. **Run the `Component.verify()` in DAG**: If the `deploy` DAG completes all `Components` successfully, the same DAG is invoked to run the `verify` function of each `Component`.
-6. **Run user defined `Controller.after_verify()` or `Controller.after_verify_unsuccessful()`**: User-defined `Controllers` may define custom logic to run after all components verify DAG is completed. This is primarily useful for custom readiness checks that requires the entire application to be ready.
+1. **[Setup] Construct The Session**: Set up the immutable `Session` object that will be passed through the rest of the rollout
+2. **[Setup] Construct the DAG (Directed acyclic graph) based on components dependencies**: User defined components described in `Controller.setup_components()` and `Session.add_component_dependency()` are in the end converted into DAG so that `oper8` can deploy them from upstream components.
+3. **[Phase1] Run the `Component.deploy()` in DAG**: In dependency order, invoke `deploy` on each `Component`, halting if any `Component` terminates with an unsuccessful state. This may be caused by an expected error (prerequisite resource not found in the cluster), or an unexpected error (unstable cluster).
+4. **[Phase2] Run user defined `Controller.after_deploy()` or `Controller.after_deploy_unsuccessful()`**: User-defined `Controllers` may define custom logic to run after the `deploy` DAG has completed successfully, but before the `verify` DAG runs. Note this is not one component level like `Component.deploy()`. This runs after all components deployments are finished.
+5. **[Phase3] Run the `Component.verify()` in DAG**: If the `deploy` DAG completes all `Components` successfully, the same DAG is invoked to run the `verify` function of each `Component`.
+6. **[Phase4] Run user defined `Controller.after_verify()` or `Controller.after_verify_unsuccessful()`**: User-defined `Controllers` may define custom logic to run after all components verify DAG is completed. This is primarily useful for custom readiness checks that requires the entire application to be ready.
 
 ## Typical Development Flow
 
