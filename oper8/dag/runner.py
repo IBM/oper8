@@ -2,7 +2,6 @@
 This module contains a collection of classes for executing functions along a DAG
 """
 
-
 # Standard
 from concurrent.futures import Executor, Future, ThreadPoolExecutor
 from typing import Callable, List, Optional
@@ -237,29 +236,46 @@ class Runner:  # pylint: disable=too-many-instance-attributes
             self._verified_nodes.append(node)
 
     def _dependency_satisfied(self, dep: "Node", verify_fn: Callable = None) -> bool:
-        # A dependency is satisfied if
-        # a) The upstream has been deployed and no verification function is
-        #       given for the dependency
-        # b) The upstream has been deployed and the given verification
-        #       function passes
+        """
+        Check if the given dependency is satisfied. A dependency is satisfied if:
+        - a) The upstream has been deployed and no verification function `verify_fn` is
+           given for the dependency
+        - b) The upstream has been deployed and the given verification
+           function `verify_fn` passes
+
+        Parameters:
+        dep (Node): The dependency to check.
+        verify_fn (Callable, optional): A verification function to call. Defaults to None.
+
+        Returns:
+        bool: True if the dependency is satisfied, False otherwise.
+        """
         dep_name = dep.get_name()
         if dep not in self._verified_nodes:
             log.debug4("%s not yet verified", dep_name)
             return False
 
+        # Runner initialized with upstream verification disabled.
         if not self._verify_upstream:
             log.debug3("%s verified without checking", dep_name)
             return True
+
+        # Run the custom verification function if provided and return the result.
         if verify_fn is None:
             log.debug4("%s verified with no verify_fn", dep_name)
             return True
-
         log.debug4("%s calling verify_fn", dep_name)
         satisfied = verify_fn()
         log.debug4("%s verify_fn() -> %s", dep_name, satisfied)
         return satisfied
 
     def _get_ready_nodes(self) -> List[str]:
+        """
+        Get the list of nodes whose dependencies (upstream) are satisfied and ready to be executed,
+
+        Returns:
+            List[str]: A list of node names that are ready to be executed.
+        """
         ready_nodes = []
         for node in [
             n for n in self._get_runnable_nodes() if n not in self._started_nodes
@@ -271,8 +287,12 @@ class Runner:  # pylint: disable=too-many-instance-attributes
                 (self._dependency_satisfied(dep, verify_fn), dep)
                 for dep, verify_fn in node_deps
             ]
+
+            # If all dependencies are satisfied, the node is ready.
             if all(res[0] for res in satisfied_dependencies):
                 ready_nodes.append(node)
+
+            # Otherwise wait for the dependencies (upstream) to be satisfied.
             else:
                 log.debug3(
                     "[%s] waiting on upstreams: %s",
