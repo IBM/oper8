@@ -700,7 +700,7 @@ def default_branch_name() -> str:
     try:
         return (
             subprocess.run(
-                "git config --get init.defaultBranch".split(),
+                ["git", "config", "--get", "init.defaultBranch"],
                 check=True,
                 stdout=subprocess.PIPE,
             )
