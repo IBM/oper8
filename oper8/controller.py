@@ -375,6 +375,7 @@ class Controller(abc.ABC):
         dependencies between them
         """
         log.debug("Rolling out %s", str(self))
+        log.debug3("Session dependency DAG: %s", str(session.graph))
 
         # Set up the deployment manager and run the rollout
         rollout_manager = RolloutManager(
