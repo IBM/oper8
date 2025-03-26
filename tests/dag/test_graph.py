@@ -43,11 +43,15 @@ def test_add_node_dependency():
     node_a = Node("a")
     node_b = Node("b")
     node_c = Node("c")
+    node_d = Node("d")
     graph.add_node(node_a)
     graph.add_node(node_b)
     graph.add_node(node_c)
+    graph.add_node(node_d)
     graph.add_node_dependency(node_a, node_b)
     graph.add_node_dependency(node_a, node_c, "testdata")
+    graph.add_node_dependency(node_b, node_c)
+    graph.add_node_dependency(node_c, node_d)
 
     assert node_a.get_children() == [(node_b, None), (node_c, "testdata")]
 
