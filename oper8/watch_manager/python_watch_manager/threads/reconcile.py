@@ -22,6 +22,7 @@ import alog
 from .... import config
 from ....deploy_manager import DeployManagerBase, KubeEventType
 from ....exceptions import ConfigError
+from ....managed_object import ManagedObject
 from ....reconcile import ReconciliationResult
 from ..filters import FilterManager
 from ..leader_election import LeadershipManagerBase
@@ -427,8 +428,29 @@ class ReconcileThread(
         log.debug3("Pushing requeue request to timer: %s", future_request)
 
         return self.timer_thread.put_event(
-            requeue_time, self.push_request, future_request
+            requeue_time, self._push_updated_request, future_request
         )
+
+    def _push_updated_request(self, request: ReconcileRequest):
+        """_push_updated_request is a helper function to ensure that when submitting a requeue
+        event we always fetch the latest resource.
+
+        Args:
+            request (ReconcileRequest): The request to push
+        """
+
+        success, current_resource = self.deploy_manager.get_object_current_state(
+            kind=request.resource.kind,
+            api_version=request.resource.api_version,
+            name=request.resource.name,
+            namespace=request.resource.namespace,
+        )
+        if not success:
+            log.debug2("Unable to locate resource for requeue request: %s", request)
+            return
+
+        request.resource = ManagedObject(current_resource)
+        self.push_request(request)
 
     ## Pending Event Helpers ###################################################
 
