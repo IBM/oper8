@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         name: Setup Python
         with:
-          python-version: 3.12
+          python-version: 3.13
       - name: Set Cache ID
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
       - uses: actions/cache@v4
