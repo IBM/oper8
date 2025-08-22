@@ -66,6 +66,12 @@ dev-docs = [
     "mkdocstrings-python>=1.12.2"
 ]
 
+dev-graph = [
+    "dash-cytoscape (==0.2.0)",
+    "dash-core-components (>=2.0.0,<3.0.0)",
+    "dash-html-components (>=2.0.0,<3.0.0)"
+]
+
 dev-fmt = [
     "pre-commit>=3.0.4,<5.0",
     "ruff==0.12.9",
