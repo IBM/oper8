@@ -1,11 +1,13 @@
-import argparse
+# Standard
 from pathlib import Path
-import dash
-from dash.dependencies import Input, Output
-from dash import dcc
-from dash import html
-import dash_cytoscape as cyto
+import argparse
 import re
+
+# Third Party
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import dash
+import dash_cytoscape as cyto
 
 
 def parse_graph_string(oper8_session_graph_str: str) -> list[dict[str, dict[str, str]]]:
