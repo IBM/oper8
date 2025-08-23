@@ -26,4 +26,4 @@ If you would like to customize the visualization, refer to the `scripts/create_s
  * Running on http://127.0.0.1:8050
 ```
 
-<!-- TODO put graph example -->
+![session_dependency_graph](session_dependency_graph.png)
