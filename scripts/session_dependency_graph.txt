@@ -5,4 +5,5 @@
     compD:[compC],
     compE:[compC,compF],
     compF:[compA],
+    compH:[compD],
 }

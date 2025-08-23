@@ -31,7 +31,11 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     app = dash.Dash(__name__)
 
     ### Style sheet
+    PRIMARY_COLOR = "#141316"
+    SECONDARY_COLOR = "#E3E5E6"
+    HIGHLIGHT_COLOR = "#1F63B6"
     NODE_SIZE = 12
+
     stylesheet = [
         {
             "selector": "node",
@@ -39,22 +43,40 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                 "opacity": 0.9,
                 "width": NODE_SIZE,
                 "height": NODE_SIZE,
+                "shape": "diamond",
                 "label": "data(label)",
-                "background-color": "#07ABA0",  # node color
-                "color": "#008B80",  # node label color
+                "background-color": PRIMARY_COLOR,  # node color
+                "color": PRIMARY_COLOR,  # node label color
                 "font-size": NODE_SIZE * 0.5,
                 "text-events": "yes",  # select node by clicking its label text.
             },
         },
         {
+            "selector": "node:selected",
+            "style": {
+                "background-color": HIGHLIGHT_COLOR,  # node color
+                "color": HIGHLIGHT_COLOR,  # node label color
+            },
+        },
+        {
             "selector": "edge",
             "style": {
-                "target-arrow-color": "#C5D3E2",
+                "target-arrow-color": SECONDARY_COLOR,
                 "target-arrow-shape": "triangle",
-                "line-color": "#C5D3E2",
-                "arrow-scale": 0.8,
-                "width": 1.2,
+                "line-color": SECONDARY_COLOR,
+                "arrow-scale": 0.5,
+                "width": 0.5,
                 "curve-style": "bezier",
+                "line-opacity": 0.6,
+            },
+        },
+        {
+            "selector": "edge:selected",
+            "style": {
+                "line-color": HIGHLIGHT_COLOR,
+                "target-arrow-color": HIGHLIGHT_COLOR,
+                "source-arrow-color": HIGHLIGHT_COLOR,
+                "line-opacity": 1,
             },
         },
     ]
