@@ -16,7 +16,7 @@ To log the session dependency graph, set the log level to `debug3` or `debug4`. 
 
 ## Visualize session dependency graph
 
-You can also visualize the graph for easier inspection. First, save the session graph string into a text file (i.e. `scripts//graph/session_dependency_graph.txt`). Then run the following command to start a local server that renders the graph as an interactive HTML page at http://127.0.0.1:8050.
+You can also visualize the graph. First, save the session graph string into a text file (i.e. `scripts//graph/session_dependency_graph.txt`). Then run the following command to start a local server that renders the graph as an interactive HTML page at http://127.0.0.1:8050.
 
 If you would like to customize the visualization, refer to the `scripts/graph/create_session_dependency_graph.py` script.
 
