@@ -14,6 +14,7 @@ import dash_cytoscape as cyto
 PRIMARY_COLOR = "#141316"
 SECONDARY_COLOR = "#E3E5E6"
 HIGHLIGHT_COLOR = "#1F63B6"
+SECONDARY_HIGHLIGHT_COLOR = "#74A6E4"
 NODE_SIZE = 30
 
 stylesheet = [
@@ -117,19 +118,19 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                 {
                     "selector": f'edge[target="{selected_node_id}"]',
                     "style": {
-                        "line-color": HIGHLIGHT_COLOR,
-                        "target-arrow-color": HIGHLIGHT_COLOR,
-                        "source-arrow-color": HIGHLIGHT_COLOR,
-                        "line-opacity": 1,
+                        "line-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "target-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "source-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "line-opacity": 0.8,
                     },
                 },
                 {
                     "selector": f'edge[source="{selected_node_id}"]',
                     "style": {
-                        "line-color": HIGHLIGHT_COLOR,
-                        "target-arrow-color": HIGHLIGHT_COLOR,
-                        "source-arrow-color": HIGHLIGHT_COLOR,
-                        "line-opacity": 1,
+                        "line-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "target-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "source-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "line-opacity": 0.8,
                     },
                 },
                 {
