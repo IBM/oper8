@@ -9,6 +9,42 @@ from dash.dependencies import Input, Output
 import dash
 import dash_cytoscape as cyto
 
+### Style sheet
+# TODO usage it in other file.
+PRIMARY_COLOR = "#141316"
+SECONDARY_COLOR = "#E3E5E6"
+HIGHLIGHT_COLOR = "#1F63B6"
+NODE_SIZE = 30
+
+stylesheet = [
+    {
+        "selector": "node",
+        "style": {
+            "opacity": 0.9,
+            "width": NODE_SIZE,
+            "height": NODE_SIZE,
+            "shape": "diamond",
+            "label": "data(label)",
+            "background-color": PRIMARY_COLOR,  # node color
+            "color": PRIMARY_COLOR,  # node label color
+            "font-size": NODE_SIZE * 0.5,
+            "text-events": "yes",  # select node by clicking its label text.
+        },
+    },
+    {
+        "selector": "edge",
+        "style": {
+            "target-arrow-color": SECONDARY_COLOR,
+            "target-arrow-shape": "triangle",
+            "line-color": SECONDARY_COLOR,
+            "arrow-scale": 0.8,
+            "width": 1.2,
+            "curve-style": "bezier",
+            "line-opacity": 0.6,
+        },
+    },
+]
+
 
 def parse_graph_string(oper8_session_graph_str: str) -> list[dict[str, dict[str, str]]]:
     """
@@ -31,57 +67,6 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     """
     cyto.load_extra_layouts()
     app = dash.Dash(__name__)
-
-    ### Style sheet
-    PRIMARY_COLOR = "#141316"
-    SECONDARY_COLOR = "#E3E5E6"
-    HIGHLIGHT_COLOR = "#1F63B6"
-    NODE_SIZE = 30
-
-    stylesheet = [
-        {
-            "selector": "node",
-            "style": {
-                "opacity": 0.9,
-                "width": NODE_SIZE,
-                "height": NODE_SIZE,
-                "shape": "diamond",
-                "label": "data(label)",
-                "background-color": PRIMARY_COLOR,  # node color
-                "color": PRIMARY_COLOR,  # node label color
-                "font-size": NODE_SIZE * 0.5,
-                "text-events": "yes",  # select node by clicking its label text.
-            },
-        },
-        {
-            "selector": "node:selected",
-            "style": {
-                "background-color": HIGHLIGHT_COLOR,  # node color
-                "color": HIGHLIGHT_COLOR,  # node label color
-            },
-        },
-        {
-            "selector": "edge",
-            "style": {
-                "target-arrow-color": SECONDARY_COLOR,
-                "target-arrow-shape": "triangle",
-                "line-color": SECONDARY_COLOR,
-                "arrow-scale": 0.8,
-                "width": 1.2,
-                "curve-style": "bezier",
-                "line-opacity": 0.6,
-            },
-        },
-        {
-            "selector": "edge:selected",
-            "style": {
-                "line-color": HIGHLIGHT_COLOR,
-                "target-arrow-color": HIGHLIGHT_COLOR,
-                "source-arrow-color": HIGHLIGHT_COLOR,
-                "line-opacity": 1,
-            },
-        },
-    ]
 
     ### App layout
     app.layout = html.Div(
@@ -125,17 +110,39 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
 
     @app.callback(Output("cytoscape", "stylesheet"), Input("cytoscape", "tapNodeData"))
     def update_stylesheet(tap_node_data):
+        base_stylesheet = stylesheet
         if tap_node_data is not None:
             selected_node_id = tap_node_data["id"]
-            new_stylesheet = Patch()
-            new_stylesheet.append(
+            highlight_styles = [
                 {
                     "selector": f'edge[target="{selected_node_id}"]',
-                    "style": {"line-color": HIGHLIGHT_COLOR},
-                }
-            )
-            return new_stylesheet
-        return Patch()
+                    "style": {
+                        "line-color": HIGHLIGHT_COLOR,
+                        "target-arrow-color": HIGHLIGHT_COLOR,
+                        "source-arrow-color": HIGHLIGHT_COLOR,
+                        "line-opacity": 1,
+                    },
+                },
+                {
+                    "selector": f'edge[source="{selected_node_id}"]',
+                    "style": {
+                        "line-color": HIGHLIGHT_COLOR,
+                        "target-arrow-color": HIGHLIGHT_COLOR,
+                        "source-arrow-color": HIGHLIGHT_COLOR,
+                        "line-opacity": 1,
+                    },
+                },
+                {
+                    "selector": f'node[id="{selected_node_id}"]',
+                    "style": {
+                        "background-color": HIGHLIGHT_COLOR,
+                        "color": HIGHLIGHT_COLOR,
+                    },
+                },
+            ]
+            return base_stylesheet + highlight_styles
+
+        return base_stylesheet
 
     return app
 
