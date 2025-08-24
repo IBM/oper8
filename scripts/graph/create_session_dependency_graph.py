@@ -28,6 +28,7 @@ stylesheet = [
             "label": "data(label)",
             "background-color": PRIMARY_COLOR,  # node color
             "color": PRIMARY_COLOR,  # node label color
+            "font-family": "Roboto Condensed, Helvetica Neue, Helvetica",
             "font-size": NODE_SIZE * 0.5,
             "text-events": "yes",  # select node by clicking its label text.
         },
