@@ -15,6 +15,7 @@ PRIMARY_COLOR = "#141316"
 SECONDARY_COLOR = "#E3E5E6"
 HIGHLIGHT_COLOR = "#1F63B6"
 SECONDARY_HIGHLIGHT_COLOR = "#74A6E4"
+UNSELECTED_COLOR = "#CBCBCB"
 NODE_SIZE = 30
 
 stylesheet = [
@@ -69,6 +70,9 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     """
     cyto.load_extra_layouts()
     app = dash.Dash(__name__)
+    node_ids = {
+        element["data"]["id"] for element in elements if "id" in element["data"]
+    }
 
     ### App layout
     app.layout = html.Div(
@@ -146,27 +150,32 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                 },
             ]
 
-            # Get the connected node names.
-            connected_node_names = set()
+            # Grayouts not connected nodes.
+            connected_node_ids = set()
             for element in elements:
                 element_data = element["data"]
                 # element_data represents an edge.
                 if "target" in element_data and "source" in element_data:
                     if element_data["target"] == selected_node_id:
-                        connected_node_names.add(element_data["source"])
+                        connected_node_ids.add(element_data["source"])
                     elif element_data["source"] == selected_node_id:
-                        connected_node_names.add(element_data["target"])
-            connected_node_styles = [
+                        connected_node_ids.add(element_data["target"])
+            not_connected_node_ids = [
+                node_id
+                for node_id in node_ids
+                if (node_id not in connected_node_ids and node_id != selected_node_id)
+            ]
+            not_connected_node_styles = [
                 {
-                    "selector": f'node[id="{connected_node_name}"]',
+                    "selector": f'node[id="{not_connected_node_id}"]',
                     "style": {
-                        "background-color": SECONDARY_HIGHLIGHT_COLOR,
-                        "color": SECONDARY_HIGHLIGHT_COLOR,
+                        "background-color": UNSELECTED_COLOR,
+                        "color": UNSELECTED_COLOR,
                     },
                 }
-                for connected_node_name in connected_node_names
+                for not_connected_node_id in not_connected_node_ids
             ]
-            return base_stylesheet + highlight_styles + connected_node_styles
+            return base_stylesheet + highlight_styles + not_connected_node_styles
 
         return base_stylesheet
 
