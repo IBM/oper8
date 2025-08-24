@@ -145,7 +145,28 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                     },
                 },
             ]
-            return base_stylesheet + highlight_styles
+
+            # Get the connected node names.
+            connected_node_names = set()
+            for element in elements:
+                element_data = element["data"]
+                # element_data represents an edge.
+                if "target" in element_data and "source" in element_data:
+                    if element_data["target"] == selected_node_id:
+                        connected_node_names.add(element_data["source"])
+                    elif element_data["source"] == selected_node_id:
+                        connected_node_names.add(element_data["target"])
+            connected_node_styles = [
+                {
+                    "selector": f'node[id="{connected_node_name}"]',
+                    "style": {
+                        "background-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "color": SECONDARY_HIGHLIGHT_COLOR,
+                    },
+                }
+                for connected_node_name in connected_node_names
+            ]
+            return base_stylesheet + highlight_styles + connected_node_styles
 
         return base_stylesheet
 
