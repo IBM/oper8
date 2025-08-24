@@ -111,6 +111,9 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
 
     @app.callback(Output("cytoscape", "stylesheet"), Input("cytoscape", "tapNodeData"))
     def update_stylesheet(tap_node_data):
+        """
+        Highlight selected node and its connected edges.
+        """
         base_stylesheet = stylesheet
         if tap_node_data is not None:
             selected_node_id = tap_node_data["id"]
