@@ -4,7 +4,7 @@ import argparse
 import re
 
 # Third Party
-from dash import dcc, html
+from dash import dcc, html, Patch
 from dash.dependencies import Input, Output
 import dash
 import dash_cytoscape as cyto
@@ -36,7 +36,7 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     PRIMARY_COLOR = "#141316"
     SECONDARY_COLOR = "#E3E5E6"
     HIGHLIGHT_COLOR = "#1F63B6"
-    NODE_SIZE = 12
+    NODE_SIZE = 30
 
     stylesheet = [
         {
@@ -66,8 +66,8 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                 "target-arrow-color": SECONDARY_COLOR,
                 "target-arrow-shape": "triangle",
                 "line-color": SECONDARY_COLOR,
-                "arrow-scale": 0.5,
-                "width": 0.5,
+                "arrow-scale": 0.8,
+                "width": 1.2,
                 "curve-style": "bezier",
                 "line-opacity": 0.6,
             },
@@ -122,6 +122,20 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     @app.callback(Output("cytoscape", "layout"), [Input("dropdown-layout", "value")])
     def update_cytoscape_layout(layout):
         return {"name": layout}
+
+    @app.callback(Output("cytoscape", "stylesheet"), Input("cytoscape", "tapNodeData"))
+    def update_stylesheet(tap_node_data):
+        if tap_node_data is not None:
+            selected_node_id = tap_node_data["id"]
+            new_stylesheet = Patch()
+            new_stylesheet.append(
+                {
+                    "selector": f'edge[target="{selected_node_id}"]',
+                    "style": {"line-color": HIGHLIGHT_COLOR},
+                }
+            )
+            return new_stylesheet
+        return Patch()
 
     return app
 
