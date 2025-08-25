@@ -1,7 +1,7 @@
 # Session Dependency Graph
 
 Oper8 creates a session dependency graph based on component dependencies to determine the correct deployment order.  
-This page explains how to log the generated graph at runtime and how to visualize it using the provided debug script.  
+This page explains how to log the generated graph at runtime and how to visualize it using the provided debug script during development.  
 For the overall system architecture, please refer to [the architecture page](architecture.md).
 
 ## Log session dependency graph
