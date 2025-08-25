@@ -1,0 +1,9 @@
+{
+    compA:[],
+    compB:[compA],
+    compC:[compA],
+    compD:[compC],
+    compE:[compC,compF],
+    compF:[compA],
+    compH:[compD],
+}
