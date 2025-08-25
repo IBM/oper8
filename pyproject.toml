@@ -82,7 +82,7 @@ dev-build = [
 
 # NOTE: This is "all" from the user and dev perspective
 all-dev = [
-    "oper8[all, dev-test, dev-docs, dev-fmt, dev-build]"
+    "oper8[all, dev-test, dev-docs, dev-fmt, dev-build, dev-graph]"
 ]
 
 [project.urls]
