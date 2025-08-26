@@ -67,7 +67,7 @@ dev-docs = [
 ]
 
 dev-graph = [
-    "dash-cytoscape>=0.3,<0.4",
+    "dash-cytoscape>=0.2,<0.4",
 ]
 
 dev-fmt = [
