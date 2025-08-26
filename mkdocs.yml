@@ -1,7 +1,9 @@
 site_name: "oper8"
 nav:
   - Home: index.md
-  - Architecture: architecture.md
+  - Architecture:
+      - Overview: architecture.md
+      - Session Dependency Graph: session_dependency_graph.md
   - API References: API References.md
 theme:
   name: material
