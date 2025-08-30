@@ -160,22 +160,17 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                         connected_node_ids.add(element_data["source"])
                     elif element_data["source"] == selected_node_id:
                         connected_node_ids.add(element_data["target"])
-            not_connected_node_ids = [
-                node_id
-                for node_id in node_ids
-                if (node_id not in connected_node_ids and node_id != selected_node_id)
-            ]
-            not_connected_node_styles = [
+            connected_node_styles = [
                 {
-                    "selector": f'node[id="{not_connected_node_id}"]',
+                    "selector": f'node[id="{connected_node_id}"]',
                     "style": {
-                        "background-color": UNSELECTED_COLOR,
-                        "color": UNSELECTED_COLOR,
+                        "background-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "color": SECONDARY_HIGHLIGHT_COLOR,
                     },
                 }
-                for not_connected_node_id in not_connected_node_ids
+                for connected_node_id in connected_node_ids
             ]
-            return base_stylesheet + highlight_styles + not_connected_node_styles
+            return base_stylesheet + highlight_styles + connected_node_styles
 
         return base_stylesheet
 
