@@ -67,12 +67,12 @@ dev-docs = [
 ]
 
 dev-graph = [
-    "dash-cytoscape (==0.2.0)",
+    "dash-cytoscape>=0.2,<0.4",
 ]
 
 dev-fmt = [
     "pre-commit>=3.0.4,<5.0",
-    "ruff==0.12.9",
+    "ruff==0.12.10",
 ]
 
 dev-build = [
@@ -82,7 +82,7 @@ dev-build = [
 
 # NOTE: This is "all" from the user and dev perspective
 all-dev = [
-    "oper8[all, dev-test, dev-docs, dev-fmt, dev-build]"
+    "oper8[all, dev-test, dev-docs, dev-fmt, dev-build, dev-graph]"
 ]
 
 [project.urls]
