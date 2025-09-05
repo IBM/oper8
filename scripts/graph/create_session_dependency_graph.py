@@ -161,7 +161,7 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                 },
             ]
 
-            # Grayouts not connected nodes.
+            # Highlight connected nodes.
             connected_node_ids = set()
             for element in elements:
                 element_data = element["data"]
@@ -181,6 +181,7 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
                 }
                 for connected_node_id in connected_node_ids
             ]
+
             return base_stylesheet + highlight_styles + connected_node_styles
 
         return base_stylesheet
