@@ -10,12 +10,11 @@ import dash
 import dash_cytoscape as cyto
 
 ### Style sheet
-# TODO usage it in other file.
-PRIMARY_COLOR = "#141316"
-SECONDARY_COLOR = "#E3E5E6"
-HIGHLIGHT_COLOR = "#1F63B6"
-SECONDARY_HIGHLIGHT_COLOR = "#74A6E4"
-UNSELECTED_COLOR = "#CBCBCB"
+PRIMARY_COLOR = "rgb(20, 19, 22)"
+SECONDARY_COLOR = "rgb(227, 229, 230)"
+HIGHLIGHT_COLOR = "rgb(31,99,182)"
+SECONDARY_HIGHLIGHT_COLOR = "rgb(116, 166, 228)"
+UNSELECTED_COLOR = "rgb(203, 203, 203)"
 NODE_SIZE = 30
 
 stylesheet = [
@@ -113,13 +112,18 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     @app.callback(Output("cytoscape", "layout"), [Input("dropdown-layout", "value")])
     def update_cytoscape_layout(layout):
         return {"name": layout}
-
-    @app.callback(Output("cytoscape", "stylesheet"), Input("cytoscape", "tapNodeData"))
-    def update_stylesheet(tap_node_data):
+    
+    @app.callback(Output("cytoscape", "stylesheet"), Input("cytoscape", "tapNodeData"), Input("cytoscape", "tapNode"))
+    def update_stylesheet(tap_node_data, tap_node):
         """
         Highlight selected node and its connected edges.
         """
         base_stylesheet = stylesheet
+
+        # If user selected already highlighted node, reset the style.
+        if tap_node is not None and tap_node['style']['background-color'] == HIGHLIGHT_COLOR:
+            return base_stylesheet
+
         if tap_node_data is not None:
             selected_node_id = tap_node_data["id"]
             highlight_styles = [
