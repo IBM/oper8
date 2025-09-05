@@ -4,7 +4,7 @@ import argparse
 import re
 
 # Third Party
-from dash import dcc, html, Patch
+from dash import Patch, dcc, html
 from dash.dependencies import Input, Output
 import dash
 import dash_cytoscape as cyto
@@ -112,8 +112,12 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     @app.callback(Output("cytoscape", "layout"), [Input("dropdown-layout", "value")])
     def update_cytoscape_layout(layout):
         return {"name": layout}
-    
-    @app.callback(Output("cytoscape", "stylesheet"), Input("cytoscape", "tapNodeData"), Input("cytoscape", "tapNode"))
+
+    @app.callback(
+        Output("cytoscape", "stylesheet"),
+        Input("cytoscape", "tapNodeData"),
+        Input("cytoscape", "tapNode"),
+    )
     def update_stylesheet(tap_node_data, tap_node):
         """
         Highlight selected node and its connected edges.
@@ -121,7 +125,10 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
         base_stylesheet = stylesheet
 
         # If user selected already highlighted node, reset the style.
-        if tap_node is not None and tap_node['style']['background-color'] == HIGHLIGHT_COLOR:
+        if (
+            tap_node is not None
+            and tap_node["style"]["background-color"] == HIGHLIGHT_COLOR
+        ):
             return base_stylesheet
 
         if tap_node_data is not None:
