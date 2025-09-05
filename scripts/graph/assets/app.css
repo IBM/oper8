@@ -1,0 +1,13 @@
+@font-face {
+  font-family: "Roboto Condensed";
+  font-style: normal;
+  font-weight: 400;
+  src: local("Roboto Condensed"), local("RobotoCondensed-Regular"),
+    url(http://fonts.gstatic.com/s/robotocondensed/v13/Zd2E9abXLFGSr9G3YK2MsDR-eWpsHSw83BRsAQElGgc.ttf)
+      format("woff2");
+}
+
+/* Change font family for all text. */
+* {
+  font-family: "Roboto Condensed", monospace;
+}

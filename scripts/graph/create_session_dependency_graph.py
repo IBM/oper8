@@ -4,10 +4,48 @@ import argparse
 import re
 
 # Third Party
-from dash import dcc, html
+from dash import Patch, dcc, html
 from dash.dependencies import Input, Output
 import dash
 import dash_cytoscape as cyto
+
+### Style sheet
+PRIMARY_COLOR = "rgb(20, 19, 22)"
+SECONDARY_COLOR = "rgb(227, 229, 230)"
+HIGHLIGHT_COLOR = "rgb(31,99,182)"
+SECONDARY_HIGHLIGHT_COLOR = "rgb(116, 166, 228)"
+UNSELECTED_COLOR = "rgb(203, 203, 203)"
+NODE_SIZE = 30
+
+stylesheet = [
+    {
+        "selector": "node",
+        "style": {
+            "opacity": 0.9,
+            "width": NODE_SIZE,
+            "height": NODE_SIZE,
+            "shape": "diamond",
+            "label": "data(label)",
+            "background-color": PRIMARY_COLOR,  # node color
+            "color": PRIMARY_COLOR,  # node label color
+            "font-family": "Roboto Condensed, Helvetica Neue, Helvetica",
+            "font-size": NODE_SIZE * 0.5,
+            "text-events": "yes",  # select node by clicking its label text.
+        },
+    },
+    {
+        "selector": "edge",
+        "style": {
+            "target-arrow-color": SECONDARY_COLOR,
+            "target-arrow-shape": "triangle",
+            "line-color": SECONDARY_COLOR,
+            "arrow-scale": 0.8,
+            "width": 1.2,
+            "curve-style": "bezier",
+            "line-opacity": 0.6,
+        },
+    },
+]
 
 
 def parse_graph_string(oper8_session_graph_str: str) -> list[dict[str, dict[str, str]]]:
@@ -31,57 +69,9 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     """
     cyto.load_extra_layouts()
     app = dash.Dash(__name__)
-
-    ### Style sheet
-    PRIMARY_COLOR = "#141316"
-    SECONDARY_COLOR = "#E3E5E6"
-    HIGHLIGHT_COLOR = "#1F63B6"
-    NODE_SIZE = 12
-
-    stylesheet = [
-        {
-            "selector": "node",
-            "style": {
-                "opacity": 0.9,
-                "width": NODE_SIZE,
-                "height": NODE_SIZE,
-                "shape": "diamond",
-                "label": "data(label)",
-                "background-color": PRIMARY_COLOR,  # node color
-                "color": PRIMARY_COLOR,  # node label color
-                "font-size": NODE_SIZE * 0.5,
-                "text-events": "yes",  # select node by clicking its label text.
-            },
-        },
-        {
-            "selector": "node:selected",
-            "style": {
-                "background-color": HIGHLIGHT_COLOR,  # node color
-                "color": HIGHLIGHT_COLOR,  # node label color
-            },
-        },
-        {
-            "selector": "edge",
-            "style": {
-                "target-arrow-color": SECONDARY_COLOR,
-                "target-arrow-shape": "triangle",
-                "line-color": SECONDARY_COLOR,
-                "arrow-scale": 0.5,
-                "width": 0.5,
-                "curve-style": "bezier",
-                "line-opacity": 0.6,
-            },
-        },
-        {
-            "selector": "edge:selected",
-            "style": {
-                "line-color": HIGHLIGHT_COLOR,
-                "target-arrow-color": HIGHLIGHT_COLOR,
-                "source-arrow-color": HIGHLIGHT_COLOR,
-                "line-opacity": 1,
-            },
-        },
-    ]
+    node_ids = {
+        element["data"]["id"] for element in elements if "id" in element["data"]
+    }
 
     ### App layout
     app.layout = html.Div(
@@ -122,6 +112,79 @@ def init_cyto_app(elements: list[dict[str, dict[str, str]]]) -> dash.Dash:
     @app.callback(Output("cytoscape", "layout"), [Input("dropdown-layout", "value")])
     def update_cytoscape_layout(layout):
         return {"name": layout}
+
+    @app.callback(
+        Output("cytoscape", "stylesheet"),
+        Input("cytoscape", "tapNodeData"),
+        Input("cytoscape", "tapNode"),
+    )
+    def update_stylesheet(tap_node_data, tap_node):
+        """
+        Highlight selected node and its connected edges.
+        """
+        base_stylesheet = stylesheet
+
+        # If user selected already highlighted node, reset the style.
+        if (
+            tap_node is not None
+            and tap_node["style"]["background-color"] == HIGHLIGHT_COLOR
+        ):
+            return base_stylesheet
+
+        if tap_node_data is not None:
+            selected_node_id = tap_node_data["id"]
+            highlight_styles = [
+                {
+                    "selector": f'edge[target="{selected_node_id}"]',
+                    "style": {
+                        "line-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "target-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "source-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "line-opacity": 0.8,
+                    },
+                },
+                {
+                    "selector": f'edge[source="{selected_node_id}"]',
+                    "style": {
+                        "line-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "target-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "source-arrow-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "line-opacity": 0.8,
+                    },
+                },
+                {
+                    "selector": f'node[id="{selected_node_id}"]',
+                    "style": {
+                        "background-color": HIGHLIGHT_COLOR,
+                        "color": HIGHLIGHT_COLOR,
+                    },
+                },
+            ]
+
+            # Highlight connected nodes.
+            connected_node_ids = set()
+            for element in elements:
+                element_data = element["data"]
+                # element_data represents an edge.
+                if "target" in element_data and "source" in element_data:
+                    if element_data["target"] == selected_node_id:
+                        connected_node_ids.add(element_data["source"])
+                    elif element_data["source"] == selected_node_id:
+                        connected_node_ids.add(element_data["target"])
+            connected_node_styles = [
+                {
+                    "selector": f'node[id="{connected_node_id}"]',
+                    "style": {
+                        "background-color": SECONDARY_HIGHLIGHT_COLOR,
+                        "color": SECONDARY_HIGHLIGHT_COLOR,
+                    },
+                }
+                for connected_node_id in connected_node_ids
+            ]
+
+            return base_stylesheet + highlight_styles + connected_node_styles
+
+        return base_stylesheet
 
     return app
 
