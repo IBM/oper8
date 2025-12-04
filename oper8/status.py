@@ -57,6 +57,7 @@ COMPONENT_STATUS_UNVERIFIED_NODES = "unverifiedComponents"
 COMPONENT_STATUS_FAILED_NODES = "failedComponents"
 COMPONENT_STATUS_DEPLOYED_COUNT = "deployed"
 COMPONENT_STATUS_VERIFIED_COUNT = "verified"
+COMPONENT_STATUS_DEPENDENCY_GRAPH = "dependencyGraph"
 
 # The fields in status that hold the version information
 # NOTE: These intentionally match IBM CloudPak naming conventions
@@ -134,6 +135,7 @@ def make_application_status(  # pylint: disable=too-many-arguments,too-many-loca
     supported_versions: Optional[List[str]] = None,
     operator_version: Optional[str] = None,
     kind: Optional[str] = None,
+    dependency_graph: Optional[str] = None,
 ) -> dict:
     """Create a full status object for an application
 
@@ -163,6 +165,8 @@ def make_application_status(  # pylint: disable=too-many-arguments,too-many-loca
             The kind of reconciling CR. If specified, this function adds
             service status field which is compliant with IBM Cloud Pak
             requirements.
+        dependency_graph: Optional[str]
+            String representation of the session dependency graph
 
     Returns:
         current_status:  dict
@@ -184,7 +188,9 @@ def make_application_status(  # pylint: disable=too-many-arguments,too-many-loca
     # track which components have deployed and verified
     if component_state is not None:
         log.debug2("Adding component state to status")
-        status[COMPONENT_STATUS] = _make_component_state(component_state)
+        status[COMPONENT_STATUS] = _make_component_state(
+            component_state, dependency_graph
+        )
         log.debug3(status[COMPONENT_STATUS])
 
     # Create the versions section
@@ -491,7 +497,9 @@ def _make_updating_condition(
     )
 
 
-def _make_component_state(component_state: CompletionState) -> dict:
+def _make_component_state(
+    component_state: CompletionState, dependency_graph: Optional[str] = None
+) -> dict:
     """Make the component state object"""
     all_nodes = sorted([comp.get_name() for comp in component_state.all_nodes])
     deployed_nodes = sorted(
@@ -509,7 +517,7 @@ def _make_component_state(component_state: CompletionState) -> dict:
         [comp.get_name() for comp in component_state.unverified_nodes]
     )
     failed_nodes = sorted([comp.get_name() for comp in component_state.failed_nodes])
-    return {
+    result = {
         COMPONENT_STATUS_ALL_NODES: all_nodes,
         COMPONENT_STATUS_DEPLOYED_NODES: deployed_nodes,
         COMPONENT_STATUS_UNVERIFIED_NODES: unverified_nodes,
@@ -517,6 +525,12 @@ def _make_component_state(component_state: CompletionState) -> dict:
         COMPONENT_STATUS_DEPLOYED_COUNT: f"{len(deployed_nodes)}/{len(all_nodes)}",
         COMPONENT_STATUS_VERIFIED_COUNT: f"{len(verified_nodes)}/{len(all_nodes)}",
     }
+    
+    # Add dependency graph if provided
+    if dependency_graph is not None:
+        result[COMPONENT_STATUS_DEPENDENCY_GRAPH] = dependency_graph
+    
+    return result
 
 
 def _make_available_version(version: str) -> dict:
