@@ -525,11 +525,11 @@ def _make_component_state(
         COMPONENT_STATUS_DEPLOYED_COUNT: f"{len(deployed_nodes)}/{len(all_nodes)}",
         COMPONENT_STATUS_VERIFIED_COUNT: f"{len(verified_nodes)}/{len(all_nodes)}",
     }
-    
+
     # Add dependency graph if provided
     if dependency_graph is not None:
         result[COMPONENT_STATUS_DEPENDENCY_GRAPH] = dependency_graph
-    
+
     return result
 
 

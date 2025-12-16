@@ -143,8 +143,9 @@ def test_make_application_status_component_state():
 
 def test_make_application_status_component_state_with_dependency_graph():
     """Make sure that dependency_graph is included in component status when provided"""
+    # Local
     from oper8.dag import Graph
-    
+
     graph = Graph()
     node_a = Node("A")
     node_b = Node("B")
@@ -152,7 +153,7 @@ def test_make_application_status_component_state_with_dependency_graph():
     graph.add_node(node_b)
     graph.add_node_dependency(node_a, node_b)
     graph_str = str(graph)
-    
+
     res = status.make_application_status(
         component_state=CompletionState(
             verified_nodes=[node_a, node_b],
