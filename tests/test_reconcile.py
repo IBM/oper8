@@ -1301,6 +1301,70 @@ def test_update_reconcile_completion_status(
     check_status(dm, cr, ready_reason, updating_reason, completion_state)
 
 
+@pytest.mark.parametrize(
+    ["log_level", "should_include_graph"],
+    [
+        ["debug4", True],
+        ["debug3", False],
+        ["debug2", False],
+        ["debug", False],
+        ["info", False],
+    ],
+)
+def test_update_reconcile_completion_status_dependency_graph_by_log_level(
+    log_level, should_include_graph
+):
+    """Test that dependency_graph is only included in status when log level is debug4"""
+    # Local
+    from oper8.dag import Graph
+
+    # Setup CR with log level annotation
+    cr = setup_cr()
+    cr["metadata"]["annotations"] = {
+        constants.LOG_DEFAULT_LEVEL_NAME: log_level,
+    }
+
+    # Create a graph with nodes
+    graph = Graph()
+    node_a = Node("A")
+    node_b = Node("B")
+    graph.add_node(node_a)
+    graph.add_node(node_b)
+    graph.add_node_dependency(node_a, node_b)
+
+    completion_state = CompletionState(verified_nodes=[node_a, node_b])
+
+    dm = MockDeployManager(resources=[cr])
+    rm = ReconcileManager(deploy_manager=dm)
+    session = setup_session(full_cr=cr, deploy_manager=dm)
+    # Access the private __graph attribute
+    session._Session__graph = graph
+
+    # Configure logging with the specified level
+    alog.configure(default_level=log_level)
+
+    rm._update_reconcile_completion_status(session, completion_state)
+
+    # Check the status
+    obj = dm.get_obj(
+        kind=cr.kind,
+        name=cr.metadata.name,
+        namespace=cr.metadata.namespace,
+        api_version=cr.apiVersion,
+    )
+    assert obj is not None
+    assert obj.get("status")
+
+    component_status = obj["status"].get(status.COMPONENT_STATUS)
+    assert component_status is not None
+
+    if should_include_graph:
+        assert status.COMPONENT_STATUS_DEPENDENCY_GRAPH in component_status
+        assert component_status[status.COMPONENT_STATUS_DEPENDENCY_GRAPH] == str(graph)
+    else:
+        assert status.COMPONENT_STATUS_DEPENDENCY_GRAPH not in component_status
+
+
 ###############
 ## _update_error_status ##
 ###############
