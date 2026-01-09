@@ -22,7 +22,7 @@ dependencies = [
     "semver>=2.13.0,<4",
     "kubernetes>=25.3.0,<35",
     # Until https://github.com/libgit2/pygit2/issues/1292 is resolved
-    "pygit2>=1.12.0,<1.18",
+    "pygit2>=1.12.0,<1.20",
 ]
 
 [project.scripts]
