@@ -166,7 +166,13 @@ class ReconcileThread(
     def start_thread(self):
         """Override start_thread to start helper threads"""
         self.timer_thread.start_thread()
-        self.log_listener_thread.start()
+        # Only start the log listener if it hasn't been started yet
+        # (Python 3.13+ raises RuntimeError if started twice)
+        if (
+            not hasattr(self.log_listener_thread, "_thread")
+            or self.log_listener_thread._thread is None
+        ):
+            self.log_listener_thread.start()
         super().start_thread()
 
     def stop_thread(self):
