@@ -30,6 +30,9 @@ working_dir:
 standalone:
   type: bool
 
+include_dependency_graph_in_status:
+  type: bool
+
 strict_versioning:
   type: bool
 

@@ -1085,7 +1085,13 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             completion_state: CompletionState
                 The result of the rollout
         """
-        status_update = {"component_state": completion_state}
+        status_update = {
+            "component_state": completion_state,
+        }
+
+        # Include dependency graph if configured
+        if config.library_config.include_dependency_graph_in_status:
+            status_update["dependency_graph"] = str(session.graph)
 
         # If everything completed and verified, set ready and updating to STABLE
         # and set the status's reconciled version to the desired version

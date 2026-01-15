@@ -33,6 +33,10 @@ manage_status: true
 # Whether or not to apply the internal name annotation to output resources
 internal_name_annotation: true
 
+# Whether to include the session dependency graph in the CR status field.
+# When enabled, the dependency graph will be added to status.componentStatus.dependencyGraph
+include_dependency_graph_in_status: false
+
 # Specify a single controller to watch, else an empty string leads to watches
 # for all controllers
 controller_name: ""
