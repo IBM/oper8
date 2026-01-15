@@ -1301,6 +1301,63 @@ def test_update_reconcile_completion_status(
     check_status(dm, cr, ready_reason, updating_reason, completion_state)
 
 
+@pytest.mark.parametrize(
+    ["include_graph", "should_include_graph"],
+    [
+        [True, True],
+        [False, False],
+    ],
+)
+def test_update_reconcile_completion_status_dependency_graph_by_config(
+    include_graph, should_include_graph
+):
+    """Test that dependency_graph is included in status based on config setting"""
+    # Local
+    from oper8.dag import Graph
+
+    # Setup CR
+    cr = setup_cr()
+
+    # Create a graph with nodes
+    graph = Graph()
+    node_a = Node("A")
+    node_b = Node("B")
+    graph.add_node(node_a)
+    graph.add_node(node_b)
+    graph.add_node_dependency(node_a, node_b)
+
+    completion_state = CompletionState(verified_nodes=[node_a, node_b])
+
+    dm = MockDeployManager(resources=[cr])
+    rm = ReconcileManager(deploy_manager=dm)
+    session = setup_session(full_cr=cr, deploy_manager=dm)
+    # Access the private __graph attribute
+    session._Session__graph = graph
+
+    # Set the config value
+    with library_config(include_dependency_graph_in_status=include_graph):
+        rm._update_reconcile_completion_status(session, completion_state)
+
+    # Check the status
+    obj = dm.get_obj(
+        kind=cr.kind,
+        name=cr.metadata.name,
+        namespace=cr.metadata.namespace,
+        api_version=cr.apiVersion,
+    )
+    assert obj is not None
+    assert obj.get("status")
+
+    component_status = obj["status"].get(status.COMPONENT_STATUS)
+    assert component_status is not None
+
+    if should_include_graph:
+        assert status.COMPONENT_STATUS_DEPENDENCY_GRAPH in component_status
+        assert component_status[status.COMPONENT_STATUS_DEPENDENCY_GRAPH] == str(graph)
+    else:
+        assert status.COMPONENT_STATUS_DEPENDENCY_GRAPH not in component_status
+
+
 ###############
 ## _update_error_status ##
 ###############
