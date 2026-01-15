@@ -1087,10 +1087,8 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         """
         status_update = {
             "component_state": completion_state,
+            "dependency_graph": str(session.graph),
         }
-
-        if log.isEnabled("debug4"):
-            status_update["dependency_graph"] = str(session.graph)
 
         # If everything completed and verified, set ready and updating to STABLE
         # and set the status's reconciled version to the desired version
