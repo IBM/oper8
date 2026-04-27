@@ -34,8 +34,9 @@ oper8 = "oper8.__main__:main"
 ## User Extra Sets ##
 
 ansible = [
-    # This will isntall the k8s extension module needed to actually run
-    "ansible~=2.9.0",
+    # Ansible core engine (ansible-operator v1.42.2 uses ansible-core 2.18.14)
+    # Note: kubernetes.core and operator_sdk.util collections are provided by ansible-operator runtime
+    "ansible-core>=2.15,<3",
 ]
 
 test-helpers = [
