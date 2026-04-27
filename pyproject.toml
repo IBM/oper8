@@ -108,7 +108,6 @@ addopts = [
     "--cov-fail-under=94.0",
     "-Werror",
     "-Wignore::ImportWarning",
-    "-Wignore::DeprecationWarning"
 ]
 
 [tool.coverage.run]
