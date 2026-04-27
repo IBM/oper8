@@ -28,7 +28,5 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - name: Install mkdocs dependencies
-        run: pip install tox
       - name: Deploy documentation to GitHub Pages
-        run: tox -e docs -- gh-deploy --force
+        run: uv run --extra dev-docs ./scripts/document.sh gh-deploy --force

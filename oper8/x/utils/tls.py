@@ -92,10 +92,10 @@ def generate_ca_cert(key, encode=True):
         .issuer_name(subject)
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.utcnow())
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc))
         .not_valid_after(
             # Our certificate will be valid for 10000 days
-            datetime.datetime.utcnow()
+            datetime.datetime.now(datetime.timezone.utc)
             + datetime.timedelta(days=10000)
         )
         .add_extension(
@@ -168,10 +168,10 @@ def generate_derived_key_cert_pair(ca_key, san_list, encode=True, key_cert_sign=
         .issuer_name(get_subject())
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.utcnow())
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc))
         .not_valid_after(
             # Our certificate will be valid for 10000 days
-            datetime.datetime.utcnow()
+            datetime.datetime.now(datetime.timezone.utc)
             + datetime.timedelta(days=10000)
         )
         .add_extension(

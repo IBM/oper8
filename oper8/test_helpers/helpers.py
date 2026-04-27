@@ -681,8 +681,11 @@ def mock_config_file(config_object):
     import ansible.module_utils.basic
 
     ansible.module_utils.basic._ANSIBLE_ARGS = json.dumps(config_object).encode("utf-8")
+    # COMPATIBILITY: ansible-core >= 2.18 requires _ANSIBLE_PROFILE to be set
+    ansible.module_utils.basic._ANSIBLE_PROFILE = "legacy"
     yield
     ansible.module_utils.basic._ANSIBLE_ARGS = None
+    ansible.module_utils.basic._ANSIBLE_PROFILE = None
 
 
 @contextmanager

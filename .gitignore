@@ -5,6 +5,7 @@ __pycache__
 .coverage.*
 durations/*
 coverage*.xml
+coverage.out
 dist
 htmlcov
 build
@@ -29,3 +30,10 @@ _version.py
 
 # mkdocs documentation
 /site
+
+# uv lockfile
+uv.lock
+
+# Agent scratch
+.claude
+.bob

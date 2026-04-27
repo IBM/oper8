@@ -24,7 +24,6 @@ if sys.version_info.major > 3 or sys.version_info.minor > 11:
 
 # Third Party
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.k8s.common import K8sAnsibleMixin
 
 # First Party
 import alog
@@ -200,16 +199,14 @@ requeue_after:
 log = alog.use_channel("K8S-APP")
 
 
-class KubernetesAnsibleApplicationModule(AnsibleModule, K8sAnsibleMixin):
+class KubernetesAnsibleApplicationModule(AnsibleModule):
     """This ansible module implements management of a full application via
     the oper8 modules.
     """
 
     @property
     def argspec(self):
-        """Inherit the argspec for a K8sAnsibleMixin and add any necessary
-        overrides
-        """
+        """Define the argument specification for this module"""
         spec = {}
 
         # Add an argument for the version. This is needed so that the operator
