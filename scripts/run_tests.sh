@@ -31,5 +31,4 @@ if [[ "${pytest_opts[*]}" != *"tests/"* ]]; then
     )
 fi
 
-PYTHONPATH="${BASE_DIR}:$PYTHONPATH" python3 -m pytest \
-    $warn_arg "${pytest_opts[@]}"
+pytest $warn_arg "${pytest_opts[@]}"
