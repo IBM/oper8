@@ -33,4 +33,4 @@ jobs:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v8.1.0
       - name: Run unit tests
-        run: uv run --python ${{ matrix.python-version }} --extra all-dev
+        run: uv run --python ${{ matrix.python-version }} --extra all-dev pytest
