@@ -101,7 +101,20 @@ write_to = "oper8/_version.py"
 markers = [
     "ansible: marks tests that depend on ansible",
 ]
+addopts = [
+    "--cov=oper8",
+    "--cov-report=term",
+    "--cov-report=html",
+    "--cov-fail-under=94.0",
+    "-Werror",
+    "-Wignore::ImportWarning",
+    "-Wignore::DeprecationWarning"
+]
 
+[tool.coverage.run]
+omit = [
+    "oper8/test_helpers/**",
+]
 
 [tool.ruff]
 line-length = 100
