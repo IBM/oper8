@@ -2,7 +2,7 @@
 Tests for the LeaderWithLeaseManager
 """
 # Standard
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 # Third Party
@@ -56,7 +56,7 @@ def test_lease_already_owner():
         namespace=resource.namespace,
         spec={
             "holderIdentity": resource.name,
-            "renewTime": datetime.utcnow(),
+            "renewTime": datetime.now(timezone.utc),
             "leaseDurationSeconds": 3600,
             "leaseTransitions": 1,
         },
@@ -157,7 +157,7 @@ def test_lease_not_owner():
         namespace=original_owner.namespace,
         spec={
             "holderIdentity": original_owner.name,
-            "renewTime": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "renewTime": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "leaseDurationSeconds": 3600,
             "leaseTransitions": 1,
         },
