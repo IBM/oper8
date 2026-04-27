@@ -123,54 +123,54 @@ git checkout -b <branch_name>
 
 ## Python setup
 
-This repository uses [tox](https://tox.wiki/en/latest/index.html) to manage the python development environment. To setup the environment, run the following commands.
+This repository uses [uv](https://docs.astral.sh/uv/) to manage the python development environment. To setup the environment, run the following commands.
 
-Install `tox`.
+Install `uv`.
 
 ```bash
-pip install tox
+pip install uv
 ```
 
-Run `tox` to create a virtual environment based on `tox.ini`.
+Run `uv` to create a virtual environment for development.
 
 ```bash
-tox
+uv sync --extra all-dev
 ```
 
-To run tests written in `tests` directory, run `tox -e py<version>`. For example,
+To run tests written in `tests` directory, run `pytest`. For example,
 
 ```bash
-# Run tests with python 3.12.
-tox -e py312
+uv run pytest
 ```
 
 To only test the specific file such as `tests/test_rollout_manager.py`,
 
 ```bash
-tox -e py312 -- tests/test_rollout_manager.py
+uv run pytest tests/test_rollout_manager.py
 ```
 
 To format and lint the codes,
 
 ```bash
-tox -e fmt,lint
+uv run ./scripts/fmt.sh
+uv run ./scripts/lint.sh
 ```
 
-This repository uses [mkdocs](https://github.com/mkdocs/mkdocs/tree/master) to generate a documentation from python docstring. As long as you write the docstrings for your code, the document (API references section) will be updated whenever you run `tox -e docs` command. The document will be automatically published when your PR is merged into `main` branch.
+This repository uses [mkdocs](https://github.com/mkdocs/mkdocs/tree/master) to generate a documentation from python docstring. As long as you write the docstrings for your code, the document (API references section) will be updated whenever you run `uv run ./scripts/document.sh` command. The document will be automatically published when your PR is merged into `main` branch.
 
 To build the documentation based on your current codes, run the following command. This will outputs the documentation into `./site` folder.
 
 ```bash
-tox -e docs
+uv run ./scripts/document.sh
 ```
 
 To run other mkdocs command,
 
 ```bash
-tox -e docs -- <mkdocs command>
+uv run ./scripts/document.sh <mkdocs command>
 
 # For instance, serve the current documentation locally,
-tox -e docs -- serve
+uv run ./scripts/document.sh serve
 ...
 INFO    -  [17:35:25] Serving on http://127.0.0.1:8000/
 ```
