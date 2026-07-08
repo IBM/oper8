@@ -31,6 +31,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v8.3.0
+      - uses: astral-sh/setup-uv@v8.3.2
       - name: Run unit tests
         run: uv run --python ${{ matrix.python-version }} --extra all-dev pytest
