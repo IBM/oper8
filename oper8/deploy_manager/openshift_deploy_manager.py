@@ -126,7 +126,7 @@ class OpenshiftDeployManager(DeployManagerBase):
         )
 
     @alog.logged_function(log.debug)
-    def disable(self, resource_definitions: List[dict]) -> Tuple[bool, bool]:
+    def disable(self, resource_definitions: List[dict], _request_timeout: Optional[int] = None) -> Tuple[bool, bool]:
         """The disable process is the same as the deploy process, but the child
         module params are set to 'state: absent'
 
@@ -145,6 +145,7 @@ class OpenshiftDeployManager(DeployManagerBase):
             self._disable,
             max_retries=config.deploy_retries,
             manage_owner_references=False,
+            _request_timeout=_request_timeout,
         )
 
     def get_object_current_state(
@@ -949,12 +950,15 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         return changed
 
-    def _disable(self, resource_definition):
+    def _disable(self, resource_definition, _request_timeout: Optional[int] = None):
         """Disable a single resource to the cluster if it exists
 
         Args:
             resource_definition:  dict
                 The resource manifest to disable
+            _request_timeout:  int
+                Optional client-side timeout in seconds for the delete request.
+                If exceeded, raises urllib3.exceptions.ReadTimeoutError.
 
         Returns:
             changed:  bool
@@ -990,12 +994,16 @@ class OpenshiftDeployManager(DeployManagerBase):
                 name,
                 namespace,
             )
-            resource_handle.delete(name=name, namespace=namespace)
+            resource_handle.delete(name=name, namespace=namespace, _request_timeout=_request_timeout)
             changed = True
 
         # If the kind or instance is not found, that's a success without change
         except (ResourceNotFoundError, NotFoundError) as err:
             log.debug2("Valid error caught when disabling [%s/%s]: %s", kind, name, err)
+
+        except urllib3.exceptions.ReadTimeoutError:
+            log.warning("Timed out waiting for delete of [%s/%s] after %ss", kind, name, _request_timeout)
+            raise
 
         return changed
 

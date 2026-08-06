@@ -74,7 +74,7 @@ class DryRunDeployManager(DeployManagerBase):
             method=method,
         )
 
-    def disable(self, resource_definitions):
+    def disable(self, resource_definitions, _request_timeout: Optional[int] = None):
         log.info("DRY RUN disable")
         changed = False
         for resource in resource_definitions:

@@ -4,7 +4,7 @@ ReconcileProcessEntrypoint for all PWM reconciles
 
 # Standard
 from multiprocessing.connection import Connection
-from typing import Type
+from typing import Optional, Type
 import copy
 import dataclasses
 import logging
@@ -128,10 +128,10 @@ class ReconcileProcessDeployManager(OpenshiftDeployManager):
 
         return resource
 
-    def _disable(self, resource_definition: dict) -> bool:
+    def _disable(self, resource_definition: dict, _request_timeout: Optional[int] = None) -> bool:
         """Override disable to insert subsystem logic"""
 
-        changed = super()._disable(resource_definition)
+        changed = super()._disable(resource_definition, _request_timeout)
         if not changed:
             return changed
 
