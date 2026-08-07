@@ -8,10 +8,10 @@ from queue import Queue
 from threading import Event, Thread
 from unittest import mock
 import time
-import urllib3
 
 # Third Party
 import pytest
+import urllib3
 
 # First Party
 import alog
@@ -753,7 +753,6 @@ def test_disable_clear_cache():
     assert content is None
 
 
-
 def test_disable_timeout_forwarded_to_delete():
     """Make sure that a timeout passed to disable() is forwarded through to
     the underlying resource_handle.delete() call, and that a ReadTimeoutError
@@ -768,7 +767,9 @@ def test_disable_timeout_forwarded_to_delete():
         "delete",
         side_effect=urllib3.exceptions.ReadTimeoutError(None, None, "timed out"),
     ) as mock_delete:
-        success, changed = dm.disable(make_obj_states(cluster_state), _request_timeout=30)
+        success, changed = dm.disable(
+            make_obj_states(cluster_state), _request_timeout=30
+        )
         assert not success
         assert not changed
         _, call_kwargs = mock_delete.call_args
@@ -783,13 +784,14 @@ def test_disable_timeout_default_none():
     dm = setup_testable_manager(cluster_state=cluster_state)
 
     resource_handle = dm.client.resources.get(api_version="foo.bar.com/v1", kind="Foo")
-    with mock.patch.object(resource_handle, "delete", wraps=resource_handle.delete) as mock_delete:
+    with mock.patch.object(
+        resource_handle, "delete", wraps=resource_handle.delete
+    ) as mock_delete:
         success, changed = dm.disable(make_obj_states(cluster_state))
         assert success
         assert changed
         _, call_kwargs = mock_delete.call_args
         assert call_kwargs.get("_request_timeout") is None
-
 
 
 ##############################

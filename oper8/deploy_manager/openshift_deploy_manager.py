@@ -3,6 +3,7 @@ This DeployManager is responsible for delegating cluster operations to the
 openshift library. It is the one that will be used when the operator is running
 in the cluster or outside the cluster making live changes.
 """
+
 # Standard
 from collections import namedtuple
 from typing import Callable, Iterator, List, Optional, Tuple
@@ -126,7 +127,11 @@ class OpenshiftDeployManager(DeployManagerBase):
         )
 
     @alog.logged_function(log.debug)
-    def disable(self, resource_definitions: List[dict], _request_timeout: Optional[int] = None) -> Tuple[bool, bool]:
+    def disable(
+        self,
+        resource_definitions: List[dict],
+        _request_timeout: Optional[int] = None,
+    ) -> Tuple[bool, bool]:
         """The disable process is the same as the deploy process, but the child
         module params are set to 'state: absent'
 
@@ -994,7 +999,9 @@ class OpenshiftDeployManager(DeployManagerBase):
                 name,
                 namespace,
             )
-            resource_handle.delete(name=name, namespace=namespace, _request_timeout=_request_timeout)
+            resource_handle.delete(
+                name=name, namespace=namespace, _request_timeout=_request_timeout
+            )
             changed = True
 
         # If the kind or instance is not found, that's a success without change
@@ -1002,7 +1009,12 @@ class OpenshiftDeployManager(DeployManagerBase):
             log.debug2("Valid error caught when disabling [%s/%s]: %s", kind, name, err)
 
         except urllib3.exceptions.ReadTimeoutError:
-            log.warning("Timed out waiting for delete of [%s/%s] after %ss", kind, name, _request_timeout)
+            log.warning(
+                "Timed out waiting for delete of [%s/%s] after %ss",
+                kind,
+                name,
+                _request_timeout,
+            )
             raise
 
         return changed
