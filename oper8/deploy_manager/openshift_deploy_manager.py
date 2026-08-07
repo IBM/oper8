@@ -502,6 +502,9 @@ class OpenshiftDeployManager(DeployManagerBase):
             # in an intentional sequence and resources later in the file may
             # depend on resources earlier in the file.
             except Exception as err:  # pylint: disable=broad-except
+                if isinstance(err, urllib3.exceptions.ReadTimeoutError):
+                    raise
+
                 log.warning(
                     "Operation [%s] failed to execute: %s",
                     operation,
