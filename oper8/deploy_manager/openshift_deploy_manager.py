@@ -1008,15 +1008,6 @@ class OpenshiftDeployManager(DeployManagerBase):
         except (ResourceNotFoundError, NotFoundError) as err:
             log.debug2("Valid error caught when disabling [%s/%s]: %s", kind, name, err)
 
-        except urllib3.exceptions.ReadTimeoutError:
-            log.warning(
-                "Timed out waiting for delete of [%s/%s] after %ss",
-                kind,
-                name,
-                _request_timeout,
-            )
-            raise
-
         return changed
 
     def _set_status(self, resource_definition, status):
