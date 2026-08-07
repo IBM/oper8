@@ -11,7 +11,6 @@ import time
 
 # Third Party
 import pytest
-import urllib3
 
 # First Party
 import alog
