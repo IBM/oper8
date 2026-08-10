@@ -129,7 +129,7 @@ class ReconcileProcessDeployManager(OpenshiftDeployManager):
         return resource
 
     def _disable(
-        self, resource_definition: dict, request_timeout: Optional[int] = None
+        self, resource_definition: dict, request_timeout: Optional[int]
     ) -> bool:
         """Override disable to insert subsystem logic"""
 

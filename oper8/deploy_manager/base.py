@@ -48,10 +48,7 @@ class DeployManagerBase(abc.ABC):
         """
 
     @abc.abstractmethod
-    def disable(
-        self,
-        resource_definitions: List[dict],
-    ) -> Tuple[bool, bool]:
+    def disable(self, resource_definitions: List[dict]) -> Tuple[bool, bool]:
         """The disable function ensures that the resources defined in the list of
         definitions are deleted from the cluster
 
