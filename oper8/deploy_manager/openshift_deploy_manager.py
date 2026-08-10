@@ -130,7 +130,6 @@ class OpenshiftDeployManager(DeployManagerBase):
     def disable(
         self,
         resource_definitions: List[dict],
-        _request_timeout: Optional[int] = None,
     ) -> Tuple[bool, bool]:
         """The disable process is the same as the deploy process, but the child
         module params are set to 'state: absent'
@@ -150,7 +149,7 @@ class OpenshiftDeployManager(DeployManagerBase):
             self._disable,
             max_retries=config.deploy_retries,
             manage_owner_references=False,
-            _request_timeout=_request_timeout,
+            request_timeout=config.delete_request_timeout,
         )
 
     def get_object_current_state(
@@ -958,13 +957,13 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         return changed
 
-    def _disable(self, resource_definition, _request_timeout: Optional[int] = None):
+    def _disable(self, resource_definition, request_timeout: Optional[int] = None):
         """Disable a single resource to the cluster if it exists
 
         Args:
             resource_definition:  dict
                 The resource manifest to disable
-            _request_timeout:  int
+            request_timeout:  int
                 Optional client-side timeout in seconds for the delete request.
                 If exceeded, raises urllib3.exceptions.ReadTimeoutError.
 
@@ -1003,7 +1002,7 @@ class OpenshiftDeployManager(DeployManagerBase):
                 namespace,
             )
             resource_handle.delete(
-                name=name, namespace=namespace, _request_timeout=_request_timeout
+                name=name, namespace=namespace, _request_timeout=request_timeout
             )
             changed = True
 
