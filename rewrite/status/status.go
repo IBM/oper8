@@ -61,12 +61,12 @@ func readyActive(r ReadyReason) bool { return r == ReadyStable }
 type UpdatingReason string
 
 const (
-	UpdatingStable          UpdatingReason = "Stable"
+	UpdatingStable           UpdatingReason = "Stable"
 	UpdatingPreconditionWait UpdatingReason = "PreconditionWait"
-	UpdatingVerifyWait      UpdatingReason = "VerifyWait"
-	UpdatingClusterError    UpdatingReason = "ClusterError"
-	UpdatingErrored         UpdatingReason = "Errored"
-	UpdatingVersionChange   UpdatingReason = "VersionChange"
+	UpdatingVerifyWait       UpdatingReason = "VerifyWait"
+	UpdatingClusterError     UpdatingReason = "ClusterError"
+	UpdatingErrored          UpdatingReason = "Errored"
+	UpdatingVersionChange    UpdatingReason = "VersionChange"
 )
 
 // updatingActive returns true when the Updating condition status should be "True"
@@ -110,18 +110,18 @@ func deriveServiceStatus(ready ReadyReason, updating UpdatingReason) ServiceStat
 // [UpdateApplicationStatus].
 // Only set the fields you need; zero values are treated as "not provided".
 type Options struct {
-	ReadyReason      ReadyReason
-	ReadyMessage     string
-	UpdatingReason   UpdatingReason
-	UpdatingMessage  string
-	ComponentState   *dag.CompletionState // nil = omit componentStatus block
-	ExternalConditions []map[string]any   // non-Ready/Updating conditions to preserve
-	ExternalStatus   map[string]any       // non-conditions top-level status fields
-	Version          string               // versions.reconciled
-	SupportedVersions []string            // versions.available.versions
-	OperatorVersion  string               // operatorVersion
-	Kind             string               // enables IBM CloudPak <kind>Status field
-	DependencyGraph  string               // optional graph string in componentStatus
+	ReadyReason        ReadyReason
+	ReadyMessage       string
+	UpdatingReason     UpdatingReason
+	UpdatingMessage    string
+	ComponentState     *dag.CompletionState // nil = omit componentStatus block
+	ExternalConditions []map[string]any     // non-Ready/Updating conditions to preserve
+	ExternalStatus     map[string]any       // non-conditions top-level status fields
+	Version            string               // versions.reconciled
+	SupportedVersions  []string             // versions.available.versions
+	OperatorVersion    string               // operatorVersion
+	Kind               string               // enables IBM CloudPak <kind>Status field
+	DependencyGraph    string               // optional graph string in componentStatus
 }
 
 // ── MakeApplicationStatus ────────────────────────────────────────────────────
