@@ -3,6 +3,7 @@ This DeployManager is responsible for delegating cluster operations to the
 openshift library. It is the one that will be used when the operator is running
 in the cluster or outside the cluster making live changes.
 """
+
 # Standard
 from collections import namedtuple
 from typing import Callable, Iterator, List, Optional, Tuple
@@ -145,6 +146,7 @@ class OpenshiftDeployManager(DeployManagerBase):
             self._disable,
             max_retries=config.deploy_retries,
             manage_owner_references=False,
+            request_timeout=config.delete_request_timeout,
         )
 
     def get_object_current_state(
@@ -496,6 +498,9 @@ class OpenshiftDeployManager(DeployManagerBase):
             # in an intentional sequence and resources later in the file may
             # depend on resources earlier in the file.
             except Exception as err:  # pylint: disable=broad-except
+                if isinstance(err, urllib3.exceptions.ReadTimeoutError):
+                    raise
+
                 log.warning(
                     "Operation [%s] failed to execute: %s",
                     operation,
@@ -949,12 +954,15 @@ class OpenshiftDeployManager(DeployManagerBase):
 
         return changed
 
-    def _disable(self, resource_definition):
+    def _disable(self, resource_definition, request_timeout: Optional[int]):
         """Disable a single resource to the cluster if it exists
 
         Args:
             resource_definition:  dict
                 The resource manifest to disable
+            request_timeout:  Optional[int]
+                Optional client-side timeout in seconds for the delete request.
+                If exceeded, raises urllib3.exceptions.ReadTimeoutError.
 
         Returns:
             changed:  bool
@@ -990,7 +998,9 @@ class OpenshiftDeployManager(DeployManagerBase):
                 name,
                 namespace,
             )
-            resource_handle.delete(name=name, namespace=namespace)
+            resource_handle.delete(
+                name=name, namespace=namespace, _request_timeout=request_timeout
+            )
             changed = True
 
         # If the kind or instance is not found, that's a success without change

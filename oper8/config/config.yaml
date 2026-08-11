@@ -44,6 +44,9 @@ controller_name: ""
 # Number of times to retry deploying
 deploy_retries: 3
 
+# Timeout in seconds for resource deletion requests
+delete_request_timeout: null
+
 # Allow deployment to fall back from "patch" to "put" if patch fails with a 422.
 # This will solve certain problems where there are mutually exclusive fields
 # (e.g. value / valueFrom in an env entry) that cannot be swapped using "patch."
