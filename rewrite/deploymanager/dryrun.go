@@ -19,9 +19,9 @@ import (
 // Watch channels are individually buffered; slow consumers cause no blocking.
 type DryRunDeployManager struct {
 	mu      sync.RWMutex
-	store   clusterStore          // namespace→kind→apiVersion→name→object
-	watches []watchRegistration   // active watch subscriptions
-	ownerCR map[string]any        // optional; stamped onto every deployed object
+	store   clusterStore        // namespace→kind→apiVersion→name→object
+	watches []watchRegistration // active watch subscriptions
+	ownerCR map[string]any      // optional; stamped onto every deployed object
 }
 
 // clusterStore is the nested map that simulates the cluster etcd store.

@@ -268,7 +268,10 @@ func TestRunner_Concurrent_IndependentNodesRunParallel(t *testing.T) {
 	// start times. With true concurrency, all 3 start before any finishes.
 	// Each node sleeps briefly to allow others to start, then records its
 	// start time. We assert all 3 started within 10ms of each other.
-	type record struct{ name string; start time.Time }
+	type record struct {
+		name  string
+		start time.Time
+	}
 	records := make(chan record, 3)
 
 	makeNode := func(name string) *dag.Node {
@@ -299,8 +302,12 @@ func TestRunner_Concurrent_IndependentNodesRunParallel(t *testing.T) {
 	// Find spread between earliest and latest start.
 	earliest, latest := times[0], times[0]
 	for _, ts := range times[1:] {
-		if ts.Before(earliest) { earliest = ts }
-		if ts.After(latest)    { latest = ts }
+		if ts.Before(earliest) {
+			earliest = ts
+		}
+		if ts.After(latest) {
+			latest = ts
+		}
 	}
 	spread := latest.Sub(earliest)
 	// Serial: nodes[1] starts after nodes[0] finishes (≥10ms later).
