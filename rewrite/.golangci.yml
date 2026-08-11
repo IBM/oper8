@@ -7,15 +7,15 @@ run:
 
 linters:
   enable:
-    - govet        # go vet checks
-    - errcheck     # unchecked errors
-    - staticcheck  # staticcheck SA rules
-    - unused       # unused code
-    - gofmt        # formatting
-    - goimports    # import grouping
-    - gosimple     # simplification suggestions
-    - ineffassign  # ineffectual assignments
-    - typecheck    # compilation errors
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - gosimple
+    - ineffassign
+    - typecheck
 
 linters-settings:
   gofmt:
