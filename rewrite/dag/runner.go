@@ -52,7 +52,6 @@ type Runner struct {
 	// state — written only by the scheduler (serial or channel-driven)
 	mu       sync.Mutex
 	stateMap map[string]NodeState // name → terminal state
-	inFlight int64                // atomic counter of running goroutines
 	fatalErr error
 }
 

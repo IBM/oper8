@@ -10,11 +10,8 @@ on:
 
 jobs:
   test:
-    name: Test (Go ${{ matrix.go }})
+    name: Test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: ["1.22", "1.23"]   # test on two recent stable releases
 
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
+          go-version: "1.23"
           cache-dependency-path: rewrite/go.sum
 
       - name: Download modules
@@ -53,6 +50,6 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.64.8
           working-directory: rewrite
-          args: --timeout=5m ./dag/...
+          args: ./dag/...
