@@ -44,6 +44,11 @@ deploy_retries:
   type: int
   min: 0
 
+delete_request_timeout:
+  type: int
+  optional: true
+  min: 0
+
 requeue_after_seconds:
   type: int
   min: 0
