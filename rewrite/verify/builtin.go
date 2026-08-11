@@ -10,10 +10,10 @@ import (
 // verify_deployment, verify_statefulset, verify_subsystem.
 
 const (
-	availableConditionKey  = "Available"
-	completeConditionKey   = "Complete"
+	availableConditionKey   = "Available"
+	completeConditionKey    = "Complete"
 	progressingConditionKey = "Progressing"
-	newRSAvailableReason   = "NewReplicaSetAvailable"
+	newRSAvailableReason    = "NewReplicaSetAvailable"
 )
 
 // VerifyPod returns true when the Pod has a Ready=True condition.
