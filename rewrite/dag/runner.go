@@ -45,15 +45,15 @@ func WithVerifyUpstream(v bool) RunnerOption {
 // When concurrency=0 the graph runs in topology order in the calling
 // goroutine — useful for tests and deterministic dry-runs.
 type Runner struct {
-	graph   *Graph
-	cfg     runnerCfg
+	graph    *Graph
+	cfg      runnerCfg
 	disabled map[string]bool
 
 	// state — written only by the scheduler (serial or channel-driven)
-	mu         sync.Mutex
-	stateMap   map[string]NodeState // name → terminal state
-	inFlight   int64                // atomic counter of running goroutines
-	fatalErr   error
+	mu       sync.Mutex
+	stateMap map[string]NodeState // name → terminal state
+	inFlight int64                // atomic counter of running goroutines
+	fatalErr error
 }
 
 // NewRunner creates a Runner for the given graph.
