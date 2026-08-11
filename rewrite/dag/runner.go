@@ -48,7 +48,6 @@ type Runner struct {
 	graph    *Graph
 	cfg      runnerCfg
 	disabled map[string]bool
-	last     *CompletionState // result of most recent Run
 
 	// state — written only by the scheduler (serial or channel-driven)
 	mu       sync.Mutex
