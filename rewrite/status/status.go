@@ -306,12 +306,13 @@ func makeComponentStatus(cs *dag.CompletionState, depGraph string) map[string]an
 	sort.Strings(failedNames)
 
 	result := map[string]any{
-		"allComponents":       toAnySlice(allNames),
-		"deployedComponents":  toAnySlice(deployedNames),
+		"allComponents":        toAnySlice(allNames),
+		"deployedComponents":   toAnySlice(deployedNames),
+		"verifiedComponents":   toAnySlice(verifiedNames),
 		"unverifiedComponents": toAnySlice(unverifiedNames),
-		"failedComponents":    toAnySlice(failedNames),
-		"deployed":            fmt.Sprintf("%d/%d", len(deployedNames), len(allNames)),
-		"verified":            fmt.Sprintf("%d/%d", len(verifiedNames), len(allNames)),
+		"failedComponents":     toAnySlice(failedNames),
+		"deployed":             fmt.Sprintf("%d/%d", len(deployedNames), len(allNames)),
+		"verified":             fmt.Sprintf("%d/%d", len(verifiedNames), len(allNames)),
 	}
 	if depGraph != "" {
 		result["dependencyGraph"] = depGraph
