@@ -163,6 +163,27 @@ func TestMakeApplicationStatus_ComponentStatus(t *testing.T) {
 	}
 }
 
+func TestMakeApplicationStatus_ComponentStatus_VerifiedComponents(t *testing.T) {
+	// Regression: verifiedComponents key was missing from the Go port.
+	// Python _make_component_state always emits this key.
+	cs := completionState(
+		[]string{"app", "db"}, // verified
+		[]string{"cache"},     // unverified
+		[]string{},
+		[]string{},
+	)
+	st := status.MakeApplicationStatus(status.Options{ComponentState: cs})
+	compStatus, _ := st["componentStatus"].(map[string]any)
+
+	verified, ok := compStatus["verifiedComponents"].([]any)
+	if !ok {
+		t.Fatal("verifiedComponents key missing from componentStatus")
+	}
+	if len(verified) != 2 {
+		t.Errorf("verifiedComponents: want 2 got %d", len(verified))
+	}
+}
+
 func TestMakeApplicationStatus_ComponentStatus_WithDepGraph(t *testing.T) {
 	cs := completionState([]string{"a"}, nil, nil, nil)
 	st := status.MakeApplicationStatus(status.Options{
