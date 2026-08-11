@@ -34,6 +34,7 @@ type edge struct {
 type Node struct {
 	name     string
 	fn       NodeFunc
+	data     any             // arbitrary user data (e.g. a Component)
 	children map[string]edge // key = upstream node name
 }
 
@@ -47,6 +48,16 @@ func NewNode(name string) *Node {
 func NewFuncNode(name string, fn NodeFunc) *Node {
 	return &Node{name: name, fn: fn, children: make(map[string]edge)}
 }
+
+// SetFunc replaces the node's work function. Used by the RolloutManager to
+// wire component lifecycle functions onto pre-built graph nodes.
+func (n *Node) SetFunc(fn NodeFunc) { n.fn = fn }
+
+// SetData attaches arbitrary user data to the node (e.g. a Component value).
+func (n *Node) SetData(v any) { n.data = v }
+
+// Data returns the value previously stored by SetData, or nil.
+func (n *Node) Data() any { return n.data }
 
 // Name returns the node's unique name within a Graph.
 func (n *Node) Name() string { return n.name }
