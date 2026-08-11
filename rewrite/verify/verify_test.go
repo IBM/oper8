@@ -437,6 +437,59 @@ func TestVerifyResource_PicksLatestCondition(t *testing.T) {
 	}
 }
 
+// ── Python-parity: bool status value and non-bool string ─────────────────────
+
+func TestCheckCondition_BoolStatusTrue(t *testing.T) {
+	// Python test_condition_non_str_status: {"type": "Ready", "status": True}
+	// A raw bool true in a condition must be treated as Ready=True.
+	obj := makeObj("v1", "Pod", "p", "ns", map[string]any{
+		"conditions": []any{
+			map[string]any{"type": "Ready", "status": true},
+		},
+	})
+	if got := verify.VerifyPod(obj); !got {
+		t.Error("bool status=true should be treated as Ready=True")
+	}
+}
+
+func TestCheckCondition_BoolStatusFalse(t *testing.T) {
+	obj := makeObj("v1", "Pod", "p", "ns", map[string]any{
+		"conditions": []any{
+			map[string]any{"type": "Ready", "status": false},
+		},
+	})
+	if got := verify.VerifyPod(obj); got {
+		t.Error("bool status=false should be treated as Ready=False")
+	}
+}
+
+func TestCheckCondition_NonBoolString(t *testing.T) {
+	// Python test_non_bool_str_value: "NotABool" → false (not a valid bool string)
+	obj := makeObj("v1", "Foo", "foo", "ns", map[string]any{
+		"conditions": []any{
+			cond("Custom", "NotABool", ""),
+		},
+	})
+	dm := dmWith(obj)
+	ok, _ := verify.VerifyResource(context.Background(), dm, "v1", "Foo", "foo",
+		verify.VerifyOptions{Namespace: "ns", ConditionType: "Custom"})
+	if ok {
+		t.Error("non-bool string status should not be considered true")
+	}
+}
+
+func TestCheckCondition_MissingStatus(t *testing.T) {
+	// Python test_condition_missing_status: condition with no status key → false
+	obj := makeObj("v1", "Pod", "p", "ns", map[string]any{
+		"conditions": []any{
+			map[string]any{"type": "Ready"},
+		},
+	})
+	if got := verify.VerifyPod(obj); got {
+		t.Error("condition with missing status should return false")
+	}
+}
+
 // ── IsSubsystem flag ──────────────────────────────────────────────────────────
 
 func TestVerifyResource_IsSubsystem(t *testing.T) {
