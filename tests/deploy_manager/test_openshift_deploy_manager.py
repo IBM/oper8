@@ -11,6 +11,7 @@ import time
 
 # Third Party
 import pytest
+import urllib3
 
 # First Party
 import alog
@@ -716,6 +717,20 @@ def test_disable_remove_forbidden():
     success, changed = dm.disable(make_obj_states(cluster_state))
     assert not success
     assert not changed
+
+
+def test_disable_request_timeout():
+    """Make sure a ReadTimeoutError on delete is not swallowed and propagates out"""
+
+    def delete_timeout(method, namespace, kind, api_version, name):
+        if method == "DELETE":
+            raise urllib3.exceptions.ReadTimeoutError(None, None, "timed out")
+        return {}
+
+    cluster_state = {"test": {"Foo": {"foo.bar.com/v1": {"bar": delete_timeout}}}}
+    dm = setup_testable_manager(cluster_state=cluster_state)
+    with pytest.raises(urllib3.exceptions.ReadTimeoutError):
+        dm.disable(make_obj_states(cluster_state))
 
 
 def test_disable_invalid_resource_list():
