@@ -245,7 +245,8 @@ func addFinalizer(ctx context.Context, sess *session.Session, finalizer string) 
 		}
 	}
 	meta["finalizers"] = append(toAnySlice(meta["finalizers"]), finalizer)
-	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodUpdate, false)
+	// Use Default (full replace) — we already have the full current object in memory.
+	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodDefault, false)
 	return err
 }
 
@@ -259,14 +260,14 @@ func removeFinalizer(ctx context.Context, sess *session.Session, finalizer strin
 		return nil
 	}
 	existing := toAnySlice(meta["finalizers"])
-	updated := existing[:0]
+	updated := make([]any, 0, len(existing))
 	for _, f := range existing {
 		if f != finalizer {
 			updated = append(updated, f)
 		}
 	}
 	meta["finalizers"] = updated
-	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodUpdate, false)
+	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodDefault, false)
 	return err
 }
 
