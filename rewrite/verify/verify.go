@@ -19,6 +19,7 @@ package verify
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/example/oper8-go/deploymanager"
@@ -172,26 +173,36 @@ func sortConditionsByDate(conditions []map[string]any, timestampKey string) []ma
 	return sorted
 }
 
+// checkCondition checks whether a single condition dict matches expectedStatus
+// and (optionally) expectedReason.
+//
+// Python's _check_condition handles three representations of the status field:
+//   - string "True"/"False" (standard Kubernetes)
+//   - any other string — case-insensitive compare against "true"/"false"
+//   - raw bool (e.g. from YAML parsed without string coercion)
+//
+// Go must handle all three because map[string]any can hold a bool value.
 func checkCondition(condition map[string]any, expectedStatus bool, expectedReason string) bool {
-	objStatus, _ := condition["status"].(string)
-	if objStatus == "" {
+	raw := condition["status"]
+	if raw == nil {
 		return false
 	}
+
 	var statusOK bool
-	switch objStatus {
-	case "True":
-		statusOK = expectedStatus
-	case "False":
-		statusOK = !expectedStatus
-	default:
-		// non-standard string: case-insensitive compare
-		if expectedStatus {
-			statusOK = len(objStatus) > 0 &&
-				(objStatus == "true" || objStatus == "True")
-		} else {
-			statusOK = objStatus == "false" || objStatus == "False"
+	switch v := raw.(type) {
+	case bool:
+		// Raw bool — direct compare (covers test_condition_non_str_status).
+		statusOK = v == expectedStatus
+	case string:
+		if v == "" {
+			return false
 		}
+		// Case-insensitive string compare: "True"/"true"/"False"/"false"/etc.
+		statusOK = strings.EqualFold(v, "true") == expectedStatus
+	default:
+		return false
 	}
+
 	if !statusOK {
 		return false
 	}
