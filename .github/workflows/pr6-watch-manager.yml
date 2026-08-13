@@ -1,0 +1,69 @@
+name: PR-6 Watch Manager + CRD Codegen
+
+on:
+  push:
+    branches: ["rewrite/Watch_Manager"]
+    paths: ["rewrite/**"]
+  pull_request:
+    branches: ["main"]
+    paths: ["rewrite/**"]
+
+jobs:
+  test:
+    name: Build + Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rewrite
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: rewrite/go.mod
+          cache-dependency-path: rewrite/go.sum
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test (race)
+        run: go test -race ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rewrite
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: rewrite/go.mod
+          cache-dependency-path: rewrite/go.sum
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          working-directory: rewrite
+
+  manifests-verify:
+    name: Manifests up-to-date
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rewrite
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: rewrite/go.mod
+          cache-dependency-path: rewrite/go.sum
+
+      - name: Run controller-gen to regenerate CRDs
+        run: make manifests
+
+      - name: Verify no CRD drift
+        run: git diff --exit-code config/crd/
