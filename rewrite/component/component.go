@@ -33,6 +33,12 @@ type Component interface {
 	// It is used as the DAG node name.
 	Name() string
 
+	// Disabled reports whether this component should be skipped entirely.
+	// When true, Setup and Deploy are not called; the component is treated
+	// as immediately verified (counts as a no-op success in the DAG).
+	// Mirrors Python oper8's disable_component behaviour.
+	Disabled() bool
+
 	// Setup is called once before the deploy phase. Implementations should
 	// build their Kubernetes resource manifests here. Any error stops the
 	// rollout for this component (treated as a fatal HaltError).

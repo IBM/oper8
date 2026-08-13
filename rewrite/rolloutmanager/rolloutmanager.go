@@ -160,6 +160,12 @@ func (rm *RolloutManager) buildDeployRunner(ctx context.Context, comps map[strin
 		if !ok {
 			continue
 		}
+		// Disabled components skip Setup/Deploy and are treated as a
+		// no-op success so downstream nodes are not blocked.
+		if comp.Disabled() {
+			n.SetFunc(func() error { return nil })
+			continue
+		}
 		// Capture loop variables.
 		capturedComp := comp
 		capturedCtx := ctx
@@ -194,6 +200,12 @@ func (rm *RolloutManager) buildVerifyRunner(ctx context.Context, comps map[strin
 		comp, ok := comps[n.Name()]
 		if !ok {
 			runner.DisableNode(n.Name())
+			continue
+		}
+		// Disabled components already count as a no-op success in deploy;
+		// treat them as verified here too so they don't block VerifyCompleted.
+		if comp.Disabled() {
+			n.SetFunc(func() error { return nil })
 			continue
 		}
 		capturedComp := comp

@@ -136,10 +136,12 @@ func (b *BaseController) AfterVerifyUnsuccessful(_ context.Context, _ *session.S
 	return OK()
 }
 
-// ShouldRequeue defaults to true (always requeue until stable).
-// Override in your controller to provide custom logic.
+// ShouldRequeue defaults to false.
+// ReconcileManager already requeues when VerifyCompleted() is false;
+// override this method only when additional requeue logic is needed
+// (e.g. a periodic health-check interval).
 func (b *BaseController) ShouldRequeue(_ context.Context, _ *session.Session) bool {
-	return true
+	return false
 }
 
 // HasFinalizer returns false — no finalizer by default.

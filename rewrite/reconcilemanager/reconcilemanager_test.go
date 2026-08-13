@@ -2,7 +2,9 @@ package reconcilemanager_test
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/example/oper8-go/controller"
 	"github.com/example/oper8-go/dag"
@@ -28,16 +30,18 @@ func minimalCR(name, namespace, kind, apiVersion string) map[string]any {
 
 // ── stubComponent ─────────────────────────────────────────────────────────────
 
-// stubComponent implements the three-method component lifecycle.
+// stubComponent implements the full Component interface.
 type stubComponent struct {
 	name       string
+	disabled   bool
 	setupErr   error
 	deployErr  error
 	verifyOK   bool
 	setupCalls int
 }
 
-func (c *stubComponent) Name() string { return c.name }
+func (c *stubComponent) Name() string   { return c.name }
+func (c *stubComponent) Disabled() bool { return c.disabled }
 
 func (c *stubComponent) Setup(_ context.Context, _ *session.Session) error {
 	c.setupCalls++
@@ -58,8 +62,9 @@ func (c *stubComponent) Verify(_ context.Context, _ *session.Session) bool {
 // configurable SetupComponents function.
 type stubController struct {
 	controller.BaseController
-	gvk       controller.GVK
-	setupFunc func(ctx context.Context, sess *session.Session) error
+	gvk           controller.GVK
+	setupFunc     func(ctx context.Context, sess *session.Session) error
+	shouldRequeue bool
 }
 
 func (c *stubController) GVK() controller.GVK { return c.gvk }
@@ -71,19 +76,27 @@ func (c *stubController) SetupComponents(ctx context.Context, sess *session.Sess
 	return nil
 }
 
-// ShouldRequeue returns false so tests don't spin forever.
-func (c *stubController) ShouldRequeue(_ context.Context, _ *session.Session) bool { return false }
+// ShouldRequeue returns the configured value (default false).
+func (c *stubController) ShouldRequeue(_ context.Context, _ *session.Session) bool {
+	return c.shouldRequeue
+}
 
 // ── finCtrl ───────────────────────────────────────────────────────────────────
 
-// finCtrl overrides FinalizeComponents on a stubController.
+// finCtrl overrides FinalizeComponents on a stubController and adds a finalizer.
 type finCtrl struct {
 	*stubController
 	onFinalize func(context.Context, *session.Session) error
 }
 
+func (c *finCtrl) HasFinalizer() bool { return true }
+func (c *finCtrl) Finalizer() string  { return "test.example.com/finalizer" }
+
 func (c *finCtrl) FinalizeComponents(ctx context.Context, sess *session.Session) error {
-	return c.onFinalize(ctx, sess)
+	if c.onFinalize != nil {
+		return c.onFinalize(ctx, sess)
+	}
+	return nil
 }
 
 // ── shared setup ─────────────────────────────────────────────────────────────
@@ -143,6 +156,9 @@ func TestReconcile_SingleComponentVerified(t *testing.T) {
 	if comp.setupCalls != 1 {
 		t.Errorf("Setup called %d times, want 1", comp.setupCalls)
 	}
+	if result.Requeue {
+		t.Error("expected Requeue=false when all components verified")
+	}
 }
 
 // TestReconcile_SetupError verifies a setup error aborts the reconcile.
@@ -186,7 +202,7 @@ func TestReconcile_DeployError(t *testing.T) {
 }
 
 // TestReconcile_VerifyNotReady verifies that a not-ready component produces
-// no error (just an incomplete completion state).
+// no error but does requeue (verify incomplete → !VerifyCompleted()).
 func TestReconcile_VerifyNotReady(t *testing.T) {
 	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
 	comp := &stubComponent{name: "widget", verifyOK: false}
@@ -202,6 +218,9 @@ func TestReconcile_VerifyNotReady(t *testing.T) {
 
 	if result.Err != nil {
 		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if !result.Requeue {
+		t.Error("expected Requeue=true when verify is incomplete")
 	}
 }
 
@@ -322,4 +341,290 @@ func TestReconcile_Finalizer(t *testing.T) {
 	if !finalizeCalled {
 		t.Error("FinalizeComponents must be called during finalization")
 	}
+}
+
+// ── NEW CASES (cases 10–24) ───────────────────────────────────────────────────
+
+// TestReconcile_ShouldRequeue_True verifies that when ShouldRequeue returns
+// true, the result requeues even when verify is complete.
+func TestReconcile_ShouldRequeue_True(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	comp := &stubComponent{name: "widget", verifyOK: true}
+
+	ctrl := &stubController{
+		gvk:           testGVK,
+		shouldRequeue: true,
+		setupFunc: func(_ context.Context, sess *session.Session) error {
+			return addComp(sess, comp)
+		},
+	}
+
+	result := newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
+
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if !result.Requeue {
+		t.Error("expected Requeue=true when ShouldRequeue returns true")
+	}
+}
+
+// TestReconcile_ShouldRequeue_False_Stable verifies that a stable,
+// fully-verified reconcile does NOT requeue when ShouldRequeue is false.
+func TestReconcile_ShouldRequeue_False_Stable(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	comp := &stubComponent{name: "widget", verifyOK: true}
+
+	ctrl := &stubController{
+		gvk: testGVK,
+		setupFunc: func(_ context.Context, sess *session.Session) error {
+			return addComp(sess, comp)
+		},
+	}
+
+	result := newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
+
+	if result.Requeue {
+		t.Error("expected Requeue=false for stable+verified reconcile with ShouldRequeue=false")
+	}
+}
+
+// TestReconcile_MultiplePreconditions_StopsOnFirst verifies that the second
+// precondition is not called when the first fails.
+func TestReconcile_MultiplePreconditions_StopsOnFirst(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	secondCalled := false
+
+	rm := reconcilemanager.New(reconcilemanager.Options{
+		ManageStatus: false,
+		Preconditions: []reconcilemanager.PreconditionFunc{
+			func(_ context.Context, _ *session.Session) error {
+				return errors.New("first fails")
+			},
+			func(_ context.Context, _ *session.Session) error {
+				secondCalled = true
+				return nil
+			},
+		},
+	})
+
+	result := rm.Reconcile(context.Background(), &stubController{gvk: testGVK}, cr, newDM(cr), false)
+
+	if !result.Requeue {
+		t.Error("expected Requeue=true when first precondition fails")
+	}
+	if secondCalled {
+		t.Error("second precondition must not run when first fails")
+	}
+}
+
+// TestReconcile_AllPreconditionsPass verifies that all-passing preconditions
+// do not block the reconcile.
+func TestReconcile_AllPreconditionsPass(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	setupCalled := false
+
+	ctrl := &stubController{
+		gvk: testGVK,
+		setupFunc: func(_ context.Context, _ *session.Session) error {
+			setupCalled = true
+			return nil
+		},
+	}
+
+	rm := reconcilemanager.New(reconcilemanager.Options{
+		ManageStatus: false,
+		Preconditions: []reconcilemanager.PreconditionFunc{
+			func(_ context.Context, _ *session.Session) error { return nil },
+			func(_ context.Context, _ *session.Session) error { return nil },
+		},
+	})
+
+	result := rm.Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
+
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if !setupCalled {
+		t.Error("SetupComponents must be called when all preconditions pass")
+	}
+}
+
+// TestReconcile_FinalizerError verifies that a FinalizeComponents error
+// returns Requeue=true with the error set.
+func TestReconcile_FinalizerError(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	finalizeErr := errors.New("finalize-bomb")
+
+	ctrl := &finCtrl{
+		stubController: &stubController{gvk: testGVK},
+		onFinalize: func(_ context.Context, _ *session.Session) error {
+			return finalizeErr
+		},
+	}
+
+	result := newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), true)
+
+	if result.Err == nil {
+		t.Fatal("expected error from FinalizeComponents")
+	}
+	if !result.Requeue {
+		t.Error("expected Requeue=true after finalize error")
+	}
+}
+
+// TestReconcile_AddFinalizer_StampsObject verifies that when HasFinalizer()
+// is true and the reconcile is not a finalizer pass, the finalizer string
+// is written onto the stored object.
+func TestReconcile_AddFinalizer_StampsObject(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	dm := newDM(cr)
+
+	ctrl := &finCtrl{
+		stubController: &stubController{gvk: testGVK},
+		onFinalize:     nil,
+	}
+
+	result := newRM().Reconcile(context.Background(), ctrl, cr, dm, false)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	// The DM should have stored the updated object with the finalizer.
+	stored, err := dm.Get(context.Background(), "test.example.com/v1alpha1", "Foo", "foo", "default")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	meta, _ := stored["metadata"].(map[string]any)
+	finalizers, _ := meta["finalizers"].([]any)
+	found := false
+	for _, f := range finalizers {
+		if f == "test.example.com/finalizer" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("finalizer not stamped onto object; finalizers=%v", finalizers)
+	}
+}
+
+// TestReconcile_FailedComponentBlocksDependent verifies that a component
+// that fails to deploy prevents its downstream dependency from running.
+func TestReconcile_FailedComponentBlocksDependent(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	compA := &stubComponent{name: "a", deployErr: errors.New("a-fails")}
+	compB := &stubComponent{name: "b", verifyOK: true}
+
+	ctrl := &stubController{
+		gvk: testGVK,
+		setupFunc: func(_ context.Context, sess *session.Session) error {
+			nA := dag.NewFuncNode(compA.Name(), nil)
+			nA.SetData(compA)
+			nB := dag.NewFuncNode(compB.Name(), nil)
+			nB.SetData(compB)
+			if err := sess.AddComponent(nA); err != nil {
+				return err
+			}
+			if err := sess.AddComponent(nB); err != nil {
+				return err
+			}
+			return sess.AddDependency(nB, nA, nil)
+		},
+	}
+
+	newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
+
+	if compB.setupCalls > 0 {
+		t.Error("B must not run Setup when its upstream A has failed")
+	}
+}
+
+// TestReconcile_DisabledComponent_Transparent verifies that a disabled
+// component is treated as a no-op success (not blocking verify completion).
+func TestReconcile_DisabledComponent_Transparent(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	comp := &stubComponent{name: "widget", disabled: true}
+
+	ctrl := &stubController{
+		gvk: testGVK,
+		setupFunc: func(_ context.Context, sess *session.Session) error {
+			return addComp(sess, comp)
+		},
+	}
+
+	result := newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
+
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if comp.setupCalls != 0 {
+		t.Errorf("Setup must not be called for a disabled component, got %d calls", comp.setupCalls)
+	}
+	if result.Requeue {
+		t.Error("disabled component must not cause requeue (it is a no-op success)")
+	}
+}
+
+// TestReconcile_ManageStatus_False_WritesNothing verifies that no status
+// writes occur when ManageStatus=false (the DM should see only finalizer ops,
+// not SetStatus calls).
+func TestReconcile_ManageStatus_False_WritesNothing(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	dm := newDM(cr)
+	comp := &stubComponent{name: "widget", verifyOK: true}
+
+	ctrl := &stubController{
+		gvk: testGVK,
+		setupFunc: func(_ context.Context, sess *session.Session) error {
+			return addComp(sess, comp)
+		},
+	}
+
+	// ManageStatus defaults to false in newRM().
+	result := newRM().Reconcile(context.Background(), ctrl, cr, dm, false)
+
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	// If status management is disabled, SetStatus is never called.
+	// We verify indirectly: the stored object has no "status" key written by us.
+	stored, err := dm.Get(context.Background(), "test.example.com/v1alpha1", "Foo", "foo", "default")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if _, hasStatus := stored["status"]; hasStatus {
+		t.Error("status must not be written when ManageStatus=false")
+	}
+}
+
+// TestReconcile_RequeueAfter_Default verifies that ReconcileResult.RequeueAfter
+// is zero when no explicit requeue duration is requested.
+func TestReconcile_RequeueAfter_Default(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	result := newRM().Reconcile(context.Background(), &stubController{gvk: testGVK}, cr, newDM(cr), false)
+
+	if result.RequeueAfter != 0 {
+		t.Errorf("expected zero RequeueAfter by default, got %v", result.RequeueAfter)
+	}
+}
+
+// TestReconcile_RequeueAfter_NotSetByReconcileManager verifies that
+// ReconcileManager itself never sets RequeueAfter (that is the caller's job).
+func TestReconcile_RequeueAfter_NotSetByReconcileManager(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	comp := &stubComponent{name: "widget", verifyOK: false} // not stable → Requeue=true
+
+	ctrl := &stubController{
+		gvk: testGVK,
+		setupFunc: func(_ context.Context, sess *session.Session) error {
+			return addComp(sess, comp)
+		},
+	}
+
+	result := newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
+
+	if result.RequeueAfter != 0 {
+		t.Errorf("ReconcileManager must not set RequeueAfter; got %v", result.RequeueAfter)
+	}
+	_ = time.Second // keep time import used
 }

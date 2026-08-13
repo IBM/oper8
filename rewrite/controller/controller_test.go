@@ -110,10 +110,10 @@ func TestBaseController_AfterVerifyUnsuccessful_ReturnsOK(t *testing.T) {
 	}
 }
 
-func TestBaseController_ShouldRequeue_DefaultTrue(t *testing.T) {
+func TestBaseController_ShouldRequeue_DefaultFalse(t *testing.T) {
 	var b controller.BaseController
-	if !b.ShouldRequeue(context.Background(), nil) {
-		t.Error("BaseController.ShouldRequeue should return true by default")
+	if b.ShouldRequeue(context.Background(), nil) {
+		t.Error("BaseController.ShouldRequeue should return false by default; ReconcileManager drives requeue logic")
 	}
 }
 

@@ -147,7 +147,11 @@ func (rm *ReconcileManager) Reconcile(
 		return ReconcileResult{Requeue: true, Err: completionState.Err}
 	}
 
-	requeue := ctrl.ShouldRequeue(ctx, sess)
+	// Default requeue condition: not yet fully verified, OR the controller
+	// has its own reason to requeue (e.g. a watch interval).
+	// BaseController.ShouldRequeue returns false, so operators that don't
+	// override it requeue only when verify is incomplete.
+	requeue := !completionState.VerifyCompleted() || ctrl.ShouldRequeue(ctx, sess)
 	if !requeue && isFinalizer && ctrl.HasFinalizer() {
 		if err := removeFinalizer(ctx, sess, ctrl.Finalizer()); err != nil {
 			return ReconcileResult{Requeue: true, Err: err}
@@ -242,7 +246,10 @@ func addFinalizer(ctx context.Context, sess *session.Session, finalizer string) 
 		}
 	}
 	meta["finalizers"] = append(finalizers, finalizer)
-	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodUpdate, false)
+	// DeployMethodDefault performs a full replace of the in-memory-mutated
+	// object. DeployMethodUpdate would merge existing-wins, losing the
+	// finalizer we just appended.
+	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodDefault, false)
 	return err
 }
 
@@ -263,7 +270,8 @@ func removeFinalizer(ctx context.Context, sess *session.Session, finalizer strin
 		}
 	}
 	meta["finalizers"] = newFinalizers
-	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodUpdate, false)
+	// Full replace so the removal is not overwritten by the merge strategy.
+	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodDefault, false)
 	return err
 }
 

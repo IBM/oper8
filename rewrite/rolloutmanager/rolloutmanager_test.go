@@ -35,6 +35,7 @@ func newSess(t *testing.T, cr map[string]any) *session.Session {
 // stubComp is a fully-controllable Component for rolloutmanager tests.
 type stubComp struct {
 	name         string
+	disabled     bool
 	setupErr     error
 	deployErr    error
 	verifyOK     bool
@@ -43,7 +44,8 @@ type stubComp struct {
 	verifyCalled int
 }
 
-func (c *stubComp) Name() string { return c.name }
+func (c *stubComp) Name() string   { return c.name }
+func (c *stubComp) Disabled() bool { return c.disabled }
 func (c *stubComp) Setup(_ context.Context, _ *session.Session) error {
 	c.setupCalled++
 	return c.setupErr
@@ -379,5 +381,44 @@ func TestRollout_Concurrent_AllVerified(t *testing.T) {
 	cs := rolloutmanager.New(sess, &hookCtrl{}, 4).Rollout(context.Background())
 	if !cs.VerifyCompleted() {
 		t.Errorf("concurrent rollout should verify all; state: %s", cs)
+	}
+}
+
+// ── disabled component ────────────────────────────────────────────────────────
+
+func TestRollout_DisabledComponent_SkipsSetupDeploy(t *testing.T) {
+	sess := newSess(t, minCR("app", "ns"))
+	comp := &stubComp{name: "widget", disabled: true}
+	addComp(t, sess, comp)
+
+	cs := rollout(sess, &hookCtrl{})
+
+	// Disabled component is a no-op success — should not block verify completion.
+	if !cs.VerifyCompleted() {
+		t.Errorf("disabled component should not block verify-complete; state: %s", cs)
+	}
+	if comp.setupCalled != 0 {
+		t.Errorf("Setup must not be called for a disabled component, got %d calls", comp.setupCalled)
+	}
+	if comp.deployCalled != 0 {
+		t.Errorf("Deploy must not be called for a disabled component, got %d calls", comp.deployCalled)
+	}
+}
+
+func TestRollout_DisabledComponent_DoesNotBlockDownstream(t *testing.T) {
+	sess := newSess(t, minCR("app", "ns"))
+	compA := &stubComp{name: "a", disabled: true}
+	compB := &stubComp{name: "b", verifyOK: true}
+	nA := addComp(t, sess, compA)
+	nB := addComp(t, sess, compB)
+	_ = sess.AddDependency(nB, nA, nil)
+
+	cs := rollout(sess, &hookCtrl{})
+
+	if cs.AnyFailed() {
+		t.Error("disabled upstream should not cause failure")
+	}
+	if compB.deployCalled == 0 {
+		t.Error("downstream B should still deploy when upstream A is disabled")
 	}
 }
