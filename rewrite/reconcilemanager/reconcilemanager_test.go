@@ -622,3 +622,69 @@ func TestReconcile_RequeueAfter_NeverSet(t *testing.T) {
 		t.Errorf("incomplete reconcile: ReconcileManager must not set RequeueAfter; got %v", result.RequeueAfter)
 	}
 }
+
+// TestReconcile_Paused_AnnotationPresent verifies that a CR with the pause
+// annotation set skips all reconcile logic and returns Requeue=false.
+func TestReconcile_Paused_AnnotationPresent(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	cr["metadata"].(map[string]any)["annotations"] = map[string]any{
+		reconcilemanager.PauseAnnotation: "true",
+	}
+
+	setupCalled := false
+	ctrl := &stubController{
+		gvk: testGVK,
+		setupFunc: func(_ context.Context, _ *session.Session) error {
+			setupCalled = true
+			return nil
+		},
+	}
+
+	result := newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
+
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if result.Requeue {
+		t.Error("paused CR must not requeue")
+	}
+	if setupCalled {
+		t.Error("SetupComponents must not be called when CR is paused")
+	}
+}
+
+// TestReconcile_Paused_EmptyAnnotationIgnored verifies that an empty string
+// value for the pause annotation does not trigger the pause path.
+func TestReconcile_Paused_EmptyAnnotationIgnored(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	cr["metadata"].(map[string]any)["annotations"] = map[string]any{
+		reconcilemanager.PauseAnnotation: "",
+	}
+
+	result := newRM().Reconcile(context.Background(), &stubController{gvk: testGVK}, cr, newDM(cr), false)
+
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	// Empty value = not paused, empty graph = no requeue.
+	if result.Requeue {
+		t.Error("empty pause annotation must not trigger pause path")
+	}
+}
+
+// TestReconcile_Paused_NoAnnotation verifies a normal CR (no annotation at
+// all) is not affected by the pause check.
+func TestReconcile_Paused_NoAnnotation(t *testing.T) {
+	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+	// no annotations key at all
+
+	result := newRM().Reconcile(context.Background(), &stubController{gvk: testGVK}, cr, newDM(cr), false)
+
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	// Normal reconcile — empty graph, no requeue.
+	if result.Requeue {
+		t.Error("CR without pause annotation must reconcile normally")
+	}
+}

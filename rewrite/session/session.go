@@ -129,6 +129,13 @@ func (s *Session) AddComponent(n *dag.Node) error {
 	return s.Graph.AddNode(n)
 }
 
+// GetComponent returns the DAG node registered under name, and whether it
+// was found. Controllers can use this inside hook implementations to inspect
+// a specific component without reaching into the DAG API directly.
+func (s *Session) GetComponent(name string) (*dag.Node, bool) {
+	return s.Graph.GetNode(name)
+}
+
 // AddDependency declares that parent must wait for child (child deploys first).
 // Both nodes must already be in the graph. verify may be nil.
 func (s *Session) AddDependency(parent, child *dag.Node, verify dag.EdgeFunc) error {

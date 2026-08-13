@@ -278,3 +278,30 @@ func TestTruncateName_Uniqueness(t *testing.T) {
 		t.Error("different long names produced identical truncated result")
 	}
 }
+
+func TestGetComponent_Found(t *testing.T) {
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess := newSession(t, manifest, dm)
+
+	_ = sess.AddComponent(dag.NewNode("widget"))
+
+	n, ok := sess.GetComponent("widget")
+	if !ok {
+		t.Fatal("GetComponent: expected found=true for registered component")
+	}
+	if n.Name() != "widget" {
+		t.Errorf("GetComponent: got name %q, want %q", n.Name(), "widget")
+	}
+}
+
+func TestGetComponent_NotFound(t *testing.T) {
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess := newSession(t, manifest, dm)
+
+	_, ok := sess.GetComponent("nonexistent")
+	if ok {
+		t.Fatal("GetComponent: expected found=false for unregistered component")
+	}
+}

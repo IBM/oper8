@@ -41,6 +41,11 @@ import (
 	"github.com/example/oper8-go/status"
 )
 
+// PauseAnnotation is the CR annotation that suspends reconciliation.
+// Set to any non-empty value on the CR to pause; remove to resume.
+// Mirrors Python oper8's PAUSE_ANNOTATION_NAME behaviour.
+const PauseAnnotation = "oper8.org/pause-reconciliation"
+
 // PreconditionFunc is checked before the rollout begins.
 // A non-nil return aborts the reconcile; the status is set to
 // UpdatingReason=PreconditionWait with the error message.
@@ -96,19 +101,28 @@ func (rm *ReconcileManager) Reconcile(
 		return ReconcileResult{Requeue: true, Err: fmt.Errorf("reconcile: session init: %w", err)}
 	}
 
-	// ── 2. Manage finalizers ──────────────────────────────────────────────
+	// ── 2. Pause check ────────────────────────────────────────────────────
+	// If the CR carries the pause annotation, stop immediately without
+	// touching status or running any rollout logic. The request is not
+	// requeued — the next watch event (when the annotation is removed)
+	// will trigger a fresh reconcile.
+	if isPaused(crManifest) {
+		return ReconcileResult{Requeue: false}
+	}
+
+	// ── 3. Manage finalizers ──────────────────────────────────────────────
 	if ctrl.HasFinalizer() && !isFinalizer {
 		if err := addFinalizer(ctx, sess, ctrl.Finalizer()); err != nil {
 			return ReconcileResult{Requeue: true, Err: err}
 		}
 	}
 
-	// ── 3. Update status to in-progress ───────────────────────────────────
+	// ── 4. Update status to in-progress ───────────────────────────────────
 	if rm.opts.ManageStatus {
 		rm.updateStartStatus(ctx, sess)
 	}
 
-	// ── 4. Preconditions ──────────────────────────────────────────────────
+	// ── 5. Preconditions ──────────────────────────────────────────────────
 	for _, pre := range rm.opts.Preconditions {
 		if err := pre(ctx, sess); err != nil {
 			if rm.opts.ManageStatus {
@@ -121,7 +135,7 @@ func (rm *ReconcileManager) Reconcile(
 		}
 	}
 
-	// ── 5. Setup / finalize components ────────────────────────────────────
+	// ── 6. Setup / finalize components ────────────────────────────────────
 	if isFinalizer {
 		if err := ctrl.FinalizeComponents(ctx, sess); err != nil {
 			return rm.handleError(ctx, sess, dm, err)
@@ -132,16 +146,16 @@ func (rm *ReconcileManager) Reconcile(
 		}
 	}
 
-	// ── 6. Rollout ────────────────────────────────────────────────────────
+	// ── 7. Rollout ────────────────────────────────────────────────────────
 	mgr := rolloutmanager.New(sess, ctrl, rm.opts.Concurrency)
 	completionState := mgr.Rollout(ctx)
 
-	// ── 7. Update completion status ───────────────────────────────────────
+	// ── 8. Update completion status ───────────────────────────────────────
 	if rm.opts.ManageStatus {
 		rm.updateCompletionStatus(ctx, sess, dm, completionState)
 	}
 
-	// ── 8. Determine requeue ──────────────────────────────────────────────
+	// ── 9. Determine requeue ──────────────────────────────────────────────
 	// Always requeue on fatal rollout failures regardless of ShouldRequeue.
 	if completionState.AnyFailed() && completionState.Err != nil {
 		return ReconcileResult{Requeue: true, Err: completionState.Err}
@@ -277,6 +291,19 @@ func removeFinalizer(ctx context.Context, sess *session.Session, finalizer strin
 	// Full replace so the removal is not overwritten by the merge strategy.
 	_, err = sess.DeployManager.Deploy(ctx, []map[string]any{obj}, deploymanager.DeployMethodDefault, false)
 	return err
+}
+
+// ── Pause check ───────────────────────────────────────────────────────────────
+
+// isPaused returns true when the CR carries a non-empty PauseAnnotation value.
+func isPaused(crManifest map[string]any) bool {
+	meta, _ := crManifest["metadata"].(map[string]any)
+	if meta == nil {
+		return false
+	}
+	annotations, _ := meta["annotations"].(map[string]any)
+	v, _ := annotations[PauseAnnotation].(string)
+	return v != ""
 }
 
 // ── ID generation ─────────────────────────────────────────────────────────────
