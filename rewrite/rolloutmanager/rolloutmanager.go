@@ -17,8 +17,8 @@
 //   - The Python RolloutManager stored session + 4 callback funcs.
 //     Go's RolloutManager receives the Controller (which carries the hooks)
 //     so the caller does not need to extract callbacks manually.
-//   - Disabled components are not a first-class feature in this port;
-//     operators control which components are registered via SetupComponents.
+//   - Disabled components (Component.Disabled() == true) are skipped in both
+//     the deploy and verify phases and count as no-op successes in the DAG.
 package rolloutmanager
 
 import (
@@ -108,25 +108,29 @@ func (rm *RolloutManager) Rollout(ctx context.Context) *dag.CompletionState {
 	///////////////////////////////////////////////////////////////////////////
 	// Assemble final CompletionState
 	///////////////////////////////////////////////////////////////////////////
-	// Verified = nodes that made it all the way through verify.
-	// Unverified = deployed successfully but not verified (or not run in verify).
-	// Failed = failed in either graph.
-	// Unstarted = never attempted in deploy graph.
+	// Verified   = nodes that completed verify successfully.
+	// Unverified = deployed but not yet verified (non-fatal verify halt).
+	// Failed     = failed in either graph.
+	// Unstarted  = never attempted in deploy graph.
 	verifiedSet := nodeSet(verifyState.Verified)
 	failedSet := mergeNodeSets(nodeSet(verifyState.Failed), nodeSet(deployState.Failed))
 
-	deployedAll := append(deployState.Verified, deployState.Unverified...)
-	unverifiedNodes := []*dag.Node{}
+	// Build the unverified list from deployed nodes that are neither verified
+	// nor failed. Use an explicit copy to avoid aliasing deployState.Verified's
+	// backing array when appending Unverified onto it.
+	deployedAll := make([]*dag.Node, len(deployState.Verified)+len(deployState.Unverified))
+	copy(deployedAll, deployState.Verified)
+	copy(deployedAll[len(deployState.Verified):], deployState.Unverified)
+
+	var unverifiedNodes []*dag.Node
 	for _, n := range deployedAll {
 		if !verifiedSet[n.Name()] && !failedSet[n.Name()] {
 			unverifiedNodes = append(unverifiedNodes, n)
 		}
 	}
-	for _, n := range verifyState.Unverified {
-		if !verifiedSet[n.Name()] && !failedSet[n.Name()] {
-			unverifiedNodes = append(unverifiedNodes, n)
-		}
-	}
+	// Note: verifyState.Unverified is a strict subset of deployedAll
+	// (only deployed nodes enter the verify runner), so a second loop
+	// is not needed and would double-count.
 
 	finalErr := firstErr(
 		deployState.Err,

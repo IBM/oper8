@@ -81,9 +81,10 @@ type Controller interface {
 	// did not complete.
 	AfterVerifyUnsuccessful(ctx context.Context, sess *session.Session, failed bool, verifyState, deployState *dag.CompletionState) HookResult
 
-	// ShouldRequeue decides whether to requeue after a reconcile.
-	// The default implementation (BaseController) returns (true, 0) when
-	// the CR has not reached a stable verified state.
+	// ShouldRequeue reports whether the controller wants to re-enqueue this
+	// request after a successful reconcile. The default (BaseController)
+	// returns false; ReconcileManager already requeues when verify is
+	// incomplete. Override only for custom polling intervals.
 	ShouldRequeue(ctx context.Context, sess *session.Session) bool
 
 	// HasFinalizer reports whether this controller registers a Kubernetes

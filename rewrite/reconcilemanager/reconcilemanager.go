@@ -65,7 +65,7 @@ type Options struct {
 	// 0 = serial (default, good for tests).
 	Concurrency int
 	// ManageStatus controls whether ReconcileManager writes status conditions
-	// to the CR. Default true; set false in unit tests.
+	// to the CR. Defaults to false (zero value); set to true in production.
 	ManageStatus bool
 }
 
@@ -191,9 +191,13 @@ func (rm *ReconcileManager) updateCompletionStatus(ctx context.Context, sess *se
 	} else {
 		opts.UpdatingReason = status.UpdatingVerifyWait
 		opts.UpdatingMessage = "Component verification incomplete"
-		if r, _ := status.GetCondition(status.ConditionReady, sess.Status)["reason"].(string); r != string(status.ReadyInitializing) {
-			opts.ReadyReason = status.ReadyInProgress
-			opts.ReadyMessage = "Verify in progress"
+		// GetCondition returns nil when the condition is absent; guard before
+		// map-indexing to avoid a nil-map panic on a fresh CR.
+		if cond := status.GetCondition(status.ConditionReady, sess.Status); cond != nil {
+			if r, _ := cond["reason"].(string); r != string(status.ReadyInitializing) {
+				opts.ReadyReason = status.ReadyInProgress
+				opts.ReadyMessage = "Verify in progress"
+			}
 		}
 	}
 	rm.writeStatus(ctx, sess, dm, opts)

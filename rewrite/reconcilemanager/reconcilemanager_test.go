@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/example/oper8-go/controller"
 	"github.com/example/oper8-go/dag"
@@ -597,34 +596,29 @@ func TestReconcile_ManageStatus_False_WritesNothing(t *testing.T) {
 	}
 }
 
-// TestReconcile_RequeueAfter_Default verifies that ReconcileResult.RequeueAfter
-// is zero when no explicit requeue duration is requested.
-func TestReconcile_RequeueAfter_Default(t *testing.T) {
+// TestReconcile_RequeueAfter_NeverSet verifies that ReconcileManager never
+// populates RequeueAfter — setting a timed requeue is the caller's job.
+// Checked in both the stable case (no requeue) and the incomplete case
+// (Requeue=true, still no RequeueAfter).
+func TestReconcile_RequeueAfter_NeverSet(t *testing.T) {
 	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
+
+	// Stable: verify complete, no requeue.
 	result := newRM().Reconcile(context.Background(), &stubController{gvk: testGVK}, cr, newDM(cr), false)
-
 	if result.RequeueAfter != 0 {
-		t.Errorf("expected zero RequeueAfter by default, got %v", result.RequeueAfter)
+		t.Errorf("stable reconcile: expected zero RequeueAfter, got %v", result.RequeueAfter)
 	}
-}
 
-// TestReconcile_RequeueAfter_NotSetByReconcileManager verifies that
-// ReconcileManager itself never sets RequeueAfter (that is the caller's job).
-func TestReconcile_RequeueAfter_NotSetByReconcileManager(t *testing.T) {
-	cr := minimalCR("foo", "default", "Foo", "test.example.com/v1alpha1")
-	comp := &stubComponent{name: "widget", verifyOK: false} // not stable → Requeue=true
-
+	// Incomplete: verify not done, Requeue=true, but still no RequeueAfter.
+	comp := &stubComponent{name: "widget", verifyOK: false}
 	ctrl := &stubController{
 		gvk: testGVK,
 		setupFunc: func(_ context.Context, sess *session.Session) error {
 			return addComp(sess, comp)
 		},
 	}
-
-	result := newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
-
+	result = newRM().Reconcile(context.Background(), ctrl, cr, newDM(cr), false)
 	if result.RequeueAfter != 0 {
-		t.Errorf("ReconcileManager must not set RequeueAfter; got %v", result.RequeueAfter)
+		t.Errorf("incomplete reconcile: ReconcileManager must not set RequeueAfter; got %v", result.RequeueAfter)
 	}
-	_ = time.Second // keep time import used
 }
