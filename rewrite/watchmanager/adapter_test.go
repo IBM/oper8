@@ -75,9 +75,9 @@ func (n *noopController) SetupComponents(_ context.Context, sess *session.Sessio
 // The rollout manager reads Name/Disabled/Setup/Deploy/Verify from the node data.
 type noopData struct{}
 
-func (c *noopData) Name() string     { return "noop" }
-func (c *noopData) Disabled() bool   { return false }
-func (c *noopData) Setup(_ context.Context, _ *session.Session) error { return nil }
+func (c *noopData) Name() string                                       { return "noop" }
+func (c *noopData) Disabled() bool                                     { return false }
+func (c *noopData) Setup(_ context.Context, _ *session.Session) error  { return nil }
 func (c *noopData) Deploy(_ context.Context, _ *session.Session) error { return nil }
 func (c *noopData) Verify(_ context.Context, _ *session.Session) bool  { return true }
 

@@ -27,9 +27,9 @@ import (
 
 	"github.com/example/oper8-go/constants"
 	"github.com/example/oper8-go/controller"
-	oper8err "github.com/example/oper8-go/errors"
 	"github.com/example/oper8-go/dag"
 	"github.com/example/oper8-go/deploymanager"
+	oper8err "github.com/example/oper8-go/errors"
 	"github.com/example/oper8-go/session"
 )
 
@@ -88,8 +88,8 @@ func NewComponent(
 	}, nil
 }
 
-func (c *Component) Name() string     { return c.name }
-func (c *Component) Disabled() bool   { return false }
+func (c *Component) Name() string   { return c.name }
+func (c *Component) Disabled() bool { return false }
 
 func (c *Component) Setup(_ context.Context, _ *session.Session) error { return nil }
 
