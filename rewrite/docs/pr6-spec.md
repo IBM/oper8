@@ -10,11 +10,11 @@
 
 PR-6 delivers three distinct sub-features that together make oper8-go a complete, production-deployable operator framework:
 
-| Sub-feature | Package | What it adds |
-|---|---|---|
-| **6a — Watch Manager** | `watchmanager/` | controller-runtime adapter; wires ReconcileManager into a real Kubernetes watch loop |
-| **6b — CRD Codegen** | `api/v1alpha1/` + `Makefile` | Generate CRD YAML from Go struct annotations via `controller-gen` |
-| **6c — OLM Bundle** | `bundle/` + `Makefile` | Generate OperatorHub-ready bundle via `operator-sdk generate bundle` |
+| Sub-feature            | Package                      | What it adds                                                                         |
+| ---------------------- | ---------------------------- | ------------------------------------------------------------------------------------ |
+| **6a — Watch Manager** | `watchmanager/`              | controller-runtime adapter; wires ReconcileManager into a real Kubernetes watch loop |
+| **6b — CRD Codegen**   | `api/v1alpha1/` + `Makefile` | Generate CRD YAML from Go struct annotations via `controller-gen`                    |
+| **6c — OLM Bundle**    | `bundle/` + `Makefile`       | Generate OperatorHub-ready bundle via `operator-sdk generate bundle`                 |
 
 ---
 
@@ -177,18 +177,18 @@ These are the standard controller-runtime dependencies. They are **runtime depen
 
 ### Tests
 
-| Test | What it covers |
-|---|---|
-| `TestAdapter_Reconcile_HappyPath` | CR fetched, ReconcileManager called, Result mapped correctly |
-| `TestAdapter_Reconcile_NotFound` | 404 on Get returns no-error (object deleted) |
-| `TestAdapter_Reconcile_IsFinalizer` | DeletionTimestamp set → isFinalizer=true passed to ReconcileManager |
-| `TestAdapter_Reconcile_Paused` | PauseAnnotation set → filter blocks enqueue, Reconcile never called |
-| `TestAdapter_Reconcile_RequeueAfter` | ReconcileResult.RequeueAfter mapped to ctrl.Result.RequeueAfter |
-| `TestAdapter_Reconcile_Error` | ReconcileResult.Err → returned as error to controller-runtime |
-| `TestK8sDeployManager_Get` | Live DM Get maps to client.Get |
-| `TestK8sDeployManager_Deploy_Create` | Object absent → client.Create |
-| `TestK8sDeployManager_Deploy_Patch` | Object present → server-side apply patch |
-| `TestK8sDeployManager_SetStatus` | client.Status().Update() called |
+| Test                                 | What it covers                                                      |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `TestAdapter_Reconcile_HappyPath`    | CR fetched, ReconcileManager called, Result mapped correctly        |
+| `TestAdapter_Reconcile_NotFound`     | 404 on Get returns no-error (object deleted)                        |
+| `TestAdapter_Reconcile_IsFinalizer`  | DeletionTimestamp set → isFinalizer=true passed to ReconcileManager |
+| `TestAdapter_Reconcile_Paused`       | PauseAnnotation set → filter blocks enqueue, Reconcile never called |
+| `TestAdapter_Reconcile_RequeueAfter` | ReconcileResult.RequeueAfter mapped to ctrl.Result.RequeueAfter     |
+| `TestAdapter_Reconcile_Error`        | ReconcileResult.Err → returned as error to controller-runtime       |
+| `TestK8sDeployManager_Get`           | Live DM Get maps to client.Get                                      |
+| `TestK8sDeployManager_Deploy_Create` | Object absent → client.Create                                       |
+| `TestK8sDeployManager_Deploy_Patch`  | Object present → server-side apply patch                            |
+| `TestK8sDeployManager_SetStatus`     | client.Status().Update() called                                     |
 
 Use `sigs.k8s.io/controller-runtime/pkg/envtest` (or `fake.NewClientBuilder()`) for all tests — no live cluster required.
 
@@ -364,18 +364,18 @@ func (a *Adapter) Reconcile(ctx context.Context, req reconcile.Request) (reconci
 
 The generated CSV has placeholder fields that must be filled in before OperatorHub submission:
 
-| Field | Value |
-|---|---|
-| `metadata.name` | `oper8-go-operator.v0.0.1` |
-| `spec.displayName` | `Oper8 Go Operator` |
-| `spec.description` | From `README.md` description section |
-| `spec.icon` | IBM logo SVG (base64) |
-| `spec.provider.name` | `IBM` |
-| `spec.links` | GitHub repo URL |
-| `spec.maintainers` | Team contact |
-| `spec.maturity` | `alpha` |
-| `spec.keywords` | `["operator", "ibm", "reconcile", "oper8"]` |
-| `spec.minKubeVersion` | `1.28.0` |
+| Field                 | Value                                       |
+| --------------------- | ------------------------------------------- |
+| `metadata.name`       | `oper8-go-operator.v0.0.1`                  |
+| `spec.displayName`    | `Oper8 Go Operator`                         |
+| `spec.description`    | From `README.md` description section        |
+| `spec.icon`           | IBM logo SVG (base64)                       |
+| `spec.provider.name`  | `IBM`                                       |
+| `spec.links`          | GitHub repo URL                             |
+| `spec.maintainers`    | Team contact                                |
+| `spec.maturity`       | `alpha`                                     |
+| `spec.keywords`       | `["operator", "ibm", "reconcile", "oper8"]` |
+| `spec.minKubeVersion` | `1.28.0`                                    |
 
 ### Bundle format
 
@@ -424,26 +424,26 @@ rewrite/
 
 ## Dependency additions to `go.mod`
 
-| Dependency | Kind | Version |
-|---|---|---|
-| `sigs.k8s.io/controller-runtime` | runtime | `v0.19.x` |
-| `k8s.io/apimachinery` | runtime | `v0.31.x` |
-| `k8s.io/client-go` | runtime | `v0.31.x` |
-| `k8s.io/api` | runtime | `v0.31.x` |
-| `sigs.k8s.io/controller-tools` | build tool (tools.go) | `v0.17.x` |
+| Dependency                       | Kind                  | Version   |
+| -------------------------------- | --------------------- | --------- |
+| `sigs.k8s.io/controller-runtime` | runtime               | `v0.19.x` |
+| `k8s.io/apimachinery`            | runtime               | `v0.31.x` |
+| `k8s.io/client-go`               | runtime               | `v0.31.x` |
+| `k8s.io/api`                     | runtime               | `v0.31.x` |
+| `sigs.k8s.io/controller-tools`   | build tool (tools.go) | `v0.17.x` |
 
 ---
 
 ## What is explicitly NOT in PR-6
 
-| Item | Reason |
-|---|---|
-| Python filter system (10+ types) | controller-runtime predicates handle this; porting adds no value |
-| Subprocess isolation per reconcile | controller-runtime runs reconciles as goroutines; subprocesses are a Python workaround for the GIL |
-| Annotation-based leader election | controller-runtime Lease-based leader election is the standard; annotation style is deprecated |
-| Dynamic watch registration during reconcile | `ctrl.Watches()` with `EnqueueRequestForOwner` covers this declaratively at startup |
-| DryRunWatchManager | Not needed; `fake.NewClientBuilder()` from controller-runtime replaces it for tests |
-| TimerThread / HeartbeatThread | controller-runtime's requeue mechanism (`ctrl.Result{RequeueAfter: d}`) replaces both |
+| Item                                        | Reason                                                                                             |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Python filter system (10+ types)            | controller-runtime predicates handle this; porting adds no value                                   |
+| Subprocess isolation per reconcile          | controller-runtime runs reconciles as goroutines; subprocesses are a Python workaround for the GIL |
+| Annotation-based leader election            | controller-runtime Lease-based leader election is the standard; annotation style is deprecated     |
+| Dynamic watch registration during reconcile | `ctrl.Watches()` with `EnqueueRequestForOwner` covers this declaratively at startup                |
+| DryRunWatchManager                          | Not needed; `fake.NewClientBuilder()` from controller-runtime replaces it for tests                |
+| TimerThread / HeartbeatThread               | controller-runtime's requeue mechanism (`ctrl.Result{RequeueAfter: d}`) replaces both              |
 
 ---
 

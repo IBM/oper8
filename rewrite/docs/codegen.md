@@ -65,6 +65,7 @@ make generate
 ```
 
 Runs:
+
 ```
 controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
 ```
@@ -102,6 +103,7 @@ make manifests
 ```
 
 Runs:
+
 ```
 controller-gen crd paths="./api/..." \
     output:crd:artifacts:config=config/crd/bases
@@ -126,12 +128,12 @@ controller-gen crd paths="./api/..." \
 type FooCR struct { … }
 ```
 
-| Marker | Effect in the CRD |
-|---|---|
-| `+kubebuilder:object:root=true` | Marks this struct as a top-level CR (not an embedded helper struct) |
-| `+kubebuilder:subresource:status` | Registers `status` as a subresource — `kubectl` and the API server update it independently from `spec`, preventing accidental spec overwrites |
-| `+kubebuilder:resource:scope=Namespaced,shortName=foo` | Sets CR scope; `shortName` enables `kubectl get foo` |
-| `+kubebuilder:printcolumn:…` | Adds columns to `kubectl get foocrs` — no YAML config required |
+| Marker                                                 | Effect in the CRD                                                                                                                             |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `+kubebuilder:object:root=true`                        | Marks this struct as a top-level CR (not an embedded helper struct)                                                                           |
+| `+kubebuilder:subresource:status`                      | Registers `status` as a subresource — `kubectl` and the API server update it independently from `spec`, preventing accidental spec overwrites |
+| `+kubebuilder:resource:scope=Namespaced,shortName=foo` | Sets CR scope; `shortName` enables `kubectl get foo`                                                                                          |
+| `+kubebuilder:printcolumn:…`                           | Adds columns to `kubectl get foocrs` — no YAML config required                                                                                |
 
 ### On fields
 
@@ -145,11 +147,11 @@ Version string `json:"version"`
 Replicas int32 `json:"replicas,omitempty"`
 ```
 
-| Marker | Effect |
-|---|---|
-| `+kubebuilder:validation:MinLength=1` | API server rejects `version: ""` before the controller is called |
-| `+kubebuilder:validation:Minimum=1` / `Maximum=10` | Numeric range enforced at admission time |
-| `+kubebuilder:default=1` | `replicas` defaults to `1` if omitted from the manifest |
+| Marker                                             | Effect                                                           |
+| -------------------------------------------------- | ---------------------------------------------------------------- |
+| `+kubebuilder:validation:MinLength=1`              | API server rejects `version: ""` before the controller is called |
+| `+kubebuilder:validation:Minimum=1` / `Maximum=10` | Numeric range enforced at admission time                         |
+| `+kubebuilder:default=1`                           | `replicas` defaults to `1` if omitted from the manifest          |
 
 ### On the Reconcile method (RBAC)
 
@@ -159,7 +161,7 @@ Replicas int32 `json:"replicas,omitempty"`
 func (a *Adapter) Reconcile(…) (reconcile.Result, error) { … }
 ```
 
-These live in [`watchmanager/adapter.go`](../watchmanager/adapter.go) because the RBAC describes what the *controller process* needs, not what the *CR schema* looks like. `controller-gen` extracts them into `config/rbac/role.yaml` and `make bundle` embeds them in the OLM CSV.
+These live in [`watchmanager/adapter.go`](../watchmanager/adapter.go) because the RBAC describes what the _controller process_ needs, not what the _CR schema_ looks like. `controller-gen` extracts them into `config/rbac/role.yaml` and `make bundle` embeds them in the OLM CSV.
 
 ---
 
