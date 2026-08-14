@@ -8,18 +8,10 @@ on:
     branches: ["main"]
     paths: ["rewrite/**"]
 
-# golangci-lint v1.64.8 is compiled with Go 1.24.
-# It hard-fails (exit 3) when the module declares go > 1.24.
-# We pin the language version here and forcibly patch go.mod in every job
-# so that no external process can break CI by bumping the directive.
-#
-# An external process keeps bumping go.mod to go 1.25.0; the "Pin go.mod"
-# step in each job rewrites it back to 1.23.0 before any Go tooling runs.
-# golang.org/x/net and siblings are pinned ≤ go 1.23.0-compatible versions
-# in go.mod so that `go mod tidy` stays consistent.
+# go 1.25.0 matches the go directive in rewrite/go.mod.
+# golangci-lint v2.1.6 is compiled with Go 1.25 and handles go 1.25.0 modules.
 env:
-  GO_VERSION: "1.23.0"
-  REQUIRED_GO_MOD_VERSION: "1.23.0"
+  GO_VERSION: "1.25.0"
 
 jobs:
   test:
@@ -31,18 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Rewrite the go directive BEFORE setup-go or any Go tool sees go.mod.
-      # This neutralises the external process that commits go 1.25.0.
-      - name: Pin go.mod language version
-        working-directory: rewrite
-        run: sed -i "s|^go [0-9][0-9.]*|go ${{ env.REQUIRED_GO_MOD_VERSION }}|" go.mod
-
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: rewrite/go.sum
 
-      # tidy after pinning so go.sum stays consistent with go 1.23.0 deps.
       - name: go mod tidy
         run: go mod tidy
 
@@ -50,8 +35,7 @@ jobs:
         run: go build ./...
 
       - name: go test (race)
-        # '?' lines (no test files) are informational — not failures.
-        # go test exits 0 when all tested packages pass.
+        # '?' lines (no test files) are informational, not failures.
         run: go test -race ./...
 
   lint:
@@ -63,13 +47,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # golangci-lint exit 3 = module go version > lint binary go version.
-      # golangci-lint exit 5 = no Go files found (tidy mismatch).
-      # Both are prevented by pinning go.mod and running tidy first.
-      - name: Pin go.mod language version
-        working-directory: rewrite
-        run: sed -i "s|^go [0-9][0-9.]*|go ${{ env.REQUIRED_GO_MOD_VERSION }}|" go.mod
-
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -78,27 +55,24 @@ jobs:
       - name: go mod tidy
         run: go mod tidy
 
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.64.8
+          # v2.x is built with Go 1.25 — compatible with go 1.25.0 modules.
+          # Action v8+ is required; v6 ignores the version pin and downloads v1.x.
+          version: v2.1.6
           working-directory: rewrite
 
   manifests-verify:
     name: Manifests up-to-date
     runs-on: ubuntu-latest
-    # This job requires `make generate` to have been run so that
-    # zz_generated.deepcopy.go exists and controller-gen can parse the types.
-    # Until that follow-on work lands, skip this job to keep CI green.
+    # Requires `make generate` (zz_generated.deepcopy.go) to have been run first.
+    # Skip until that follow-on work lands.
     if: false
     defaults:
       run:
         working-directory: rewrite
     steps:
       - uses: actions/checkout@v4
-
-      - name: Pin go.mod language version
-        working-directory: rewrite
-        run: sed -i "s|^go [0-9][0-9.]*|go ${{ env.REQUIRED_GO_MOD_VERSION }}|" go.mod
 
       - uses: actions/setup-go@v5
         with:
