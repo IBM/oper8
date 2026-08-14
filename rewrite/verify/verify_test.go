@@ -508,3 +508,117 @@ func TestVerifyResource_IsSubsystem(t *testing.T) {
 		t.Fatalf("expected true for ready subsystem, got ok=%v err=%v", ok, err)
 	}
 }
+
+// ── Additional verify tests ───────────────────────────────────────────────────
+
+func TestVerifyResource_Subsystem_Via_IsSubsystem_Option(t *testing.T) {
+	obj := makeObj("example.com/v1", "Foo", "f", "ns", subsystemStatus("True", "False", "2.0.0"))
+	dm := dmWith(obj)
+	ok, err := verify.VerifyResource(context.Background(), dm, "example.com/v1", "Foo", "f",
+		verify.VerifyOptions{
+			Namespace:      "ns",
+			IsSubsystem:    true,
+			DesiredVersion: "2.0.0",
+		})
+	if err != nil || !ok {
+		t.Fatalf("subsystem verify via IsSubsystem option: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestVerifyResource_Subsystem_WrongVersion(t *testing.T) {
+	obj := makeObj("example.com/v1", "Foo", "f", "ns", subsystemStatus("True", "False", "1.0.0"))
+	dm := dmWith(obj)
+	ok, _ := verify.VerifyResource(context.Background(), dm, "example.com/v1", "Foo", "f",
+		verify.VerifyOptions{
+			Namespace:      "ns",
+			IsSubsystem:    true,
+			DesiredVersion: "2.0.0",
+		})
+	if ok {
+		t.Error("expected false when desired version differs from reconciled version")
+	}
+}
+
+func TestVerifyResource_CustomTimestampKey(t *testing.T) {
+	// Condition uses "updatedAt" instead of the default "lastTransitionTime".
+	obj := makeObj("v1", "Foo", "foo", "ns",
+		map[string]any{
+			"conditions": []any{
+				map[string]any{
+					"type":      "Synced",
+					"status":    "True",
+					"reason":    "ok",
+					"updatedAt": time.Now().UTC().Format(time.RFC3339),
+				},
+			},
+		})
+	dm := dmWith(obj)
+	ok, err := verify.VerifyResource(context.Background(), dm, "v1", "Foo", "foo",
+		verify.VerifyOptions{
+			Namespace:     "ns",
+			ConditionType: "Synced",
+			TimestampKey:  "updatedAt",
+		})
+	if err != nil || !ok {
+		t.Fatalf("custom timestamp key: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestVerifyPod_MissingStatus(t *testing.T) {
+	obj := makeObj("v1", "Pod", "p", "ns", nil)
+	if verify.VerifyPod(obj) {
+		t.Error("VerifyPod should return false when status is missing entirely")
+	}
+}
+
+func TestVerifyDeployment_MissingProgressing(t *testing.T) {
+	available := cond("Available", "True", "")
+	// Only Available, no Progressing condition.
+	obj := makeObj("apps/v1", "Deployment", "d", "ns", map[string]any{
+		"conditions": []any{available},
+	})
+	if verify.VerifyDeployment(obj) {
+		t.Error("VerifyDeployment should return false when Progressing condition is absent")
+	}
+}
+
+func TestVerifyStatefulSet_ZeroReplicas(t *testing.T) {
+	// spec.replicas = 0 means "scale to zero" — 0 ready == 0 desired → true
+	obj := makeObj("apps/v1", "StatefulSet", "ss", "ns", map[string]any{
+		"replicas":      float64(0),
+		"readyReplicas": float64(0),
+	})
+	if !verify.VerifyStatefulSet(obj) {
+		t.Error("StatefulSet with 0/0 replicas should be verified (scale-to-zero)")
+	}
+}
+
+func TestVerifyResource_PerCallVerifyFunc_OverridesRegistry(t *testing.T) {
+	// Pod has a Ready=False condition — built-in verifier would return false.
+	// Per-call override returns true unconditionally.
+	obj := makeObj("v1", "Pod", "p", "ns", map[string]any{
+		"conditions": []any{cond("Ready", "False", "")},
+	})
+	dm := dmWith(obj)
+	ok, err := verify.VerifyResource(context.Background(), dm, "v1", "Pod", "p",
+		verify.VerifyOptions{
+			Namespace:  "ns",
+			VerifyFunc: func(_ map[string]any) bool { return true },
+		})
+	if err != nil || !ok {
+		t.Fatalf("per-call VerifyFunc should override kind registry: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestVerifyResource_ConditionType_NoConditions(t *testing.T) {
+	obj := makeObj("v1", "Foo", "foo", "ns", map[string]any{}) // empty status
+	dm := dmWith(obj)
+	ok, err := verify.VerifyResource(context.Background(), dm, "v1", "Foo", "foo",
+		verify.VerifyOptions{Namespace: "ns", ConditionType: "Synced"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok {
+		t.Error("expected false when requested condition type is absent")
+	}
+}

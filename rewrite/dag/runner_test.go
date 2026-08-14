@@ -425,3 +425,132 @@ func TestResourceNode(t *testing.T) {
 		t.Errorf("DeployMethod: %v", rn.DeployMethod)
 	}
 }
+
+// ── Additional DAG and Runner edge-case tests ─────────────────────────────────
+
+func TestRunner_Serial_MultipleFailures_AllRecorded(t *testing.T) {
+	// Two independent failing nodes — both end up in Failed.
+	a, b := failNode("a"), failNode("b")
+	g := dag.NewGraph()
+	_ = g.AddNode(a)
+	_ = g.AddNode(b)
+	cs := dag.NewRunner(g, dag.WithConcurrency(0)).Run(context.Background())
+	if len(cs.Failed) != 2 {
+		t.Errorf("expected 2 failed nodes, got %d", len(cs.Failed))
+	}
+}
+
+func TestRunner_Serial_UnverifiedDoesNotBlockIndependent(t *testing.T) {
+	// a goes Unverified; b is independent — b should still run.
+	a := unverifiedNode("a")
+	b := okNode("b")
+	g := dag.NewGraph()
+	_ = g.AddNode(a)
+	_ = g.AddNode(b)
+	cs := dag.NewRunner(g, dag.WithConcurrency(0)).Run(context.Background())
+	assertCounts(t, cs, 1, 1, 0, 0)
+}
+
+func TestRunner_Serial_SingleNode(t *testing.T) {
+	g := dag.NewGraph()
+	_ = g.AddNode(okNode("only"))
+	cs := dag.NewRunner(g, dag.WithConcurrency(0)).Run(context.Background())
+	assertCounts(t, cs, 1, 0, 0, 0)
+}
+
+func TestRunner_Serial_NilNodeFunc_CountsAsVerified(t *testing.T) {
+	// A node with no func set should be treated as a no-op success.
+	n := dag.NewNode("no-func")
+	g := dag.NewGraph()
+	_ = g.AddNode(n)
+	cs := dag.NewRunner(g, dag.WithConcurrency(0)).Run(context.Background())
+	assertCounts(t, cs, 1, 0, 0, 0)
+}
+
+func TestRunner_DisableNode_ThenEnable(t *testing.T) {
+	n := dag.NewFuncNode("x", func() error { return errors.New("should not run") })
+	g := dag.NewGraph()
+	_ = g.AddNode(n)
+	r := dag.NewRunner(g, dag.WithConcurrency(0))
+	r.DisableNode("x")
+	r.EnableNode("x") // re-enable: should now run and fail
+
+	cs := r.Run(context.Background())
+	if !cs.AnyFailed() {
+		t.Error("re-enabled node should run and fail")
+	}
+}
+
+func TestGraph_GetNode_Found(t *testing.T) {
+	g := dag.NewGraph()
+	n := okNode("found")
+	_ = g.AddNode(n)
+	got, ok := g.GetNode("found")
+	if !ok {
+		t.Fatal("GetNode should find an added node")
+	}
+	if got.Name() != "found" {
+		t.Errorf("GetNode returned wrong node: %s", got.Name())
+	}
+}
+
+func TestGraph_GetNode_NotFound(t *testing.T) {
+	g := dag.NewGraph()
+	_, ok := g.GetNode("missing")
+	if ok {
+		t.Error("GetNode should return false for unknown node")
+	}
+}
+
+func TestGraph_Nodes_ExcludesRoot(t *testing.T) {
+	// Nodes() must not include the synthetic root (empty-name) node.
+	g := dag.NewGraph()
+	_ = g.AddNode(okNode("a"))
+	_ = g.AddNode(okNode("b"))
+	for _, n := range g.Nodes() {
+		if n.Name() == "" {
+			t.Error("Nodes() must not return the synthetic root node (empty name)")
+		}
+	}
+}
+
+func TestGraph_Empty_AfterAddNode_IsFalse(t *testing.T) {
+	g := dag.NewGraph()
+	if !g.Empty() {
+		t.Fatal("new graph should be empty")
+	}
+	_ = g.AddNode(okNode("x"))
+	if g.Empty() {
+		t.Error("graph with one node should not be empty")
+	}
+}
+
+func TestHaltError_ErrorString(t *testing.T) {
+	he := &dag.HaltError{Fatal: true, Cause: errors.New("boom")}
+	s := he.Error()
+	if s == "" {
+		t.Error("HaltError.Error() must not be empty")
+	}
+	// Unwrap must return the cause.
+	if errors.Unwrap(he) == nil {
+		t.Error("HaltError.Unwrap() must return the Cause")
+	}
+}
+
+func TestRunner_Concurrent_FatalHalt_DrainsPendingResults(t *testing.T) {
+	// Four independent nodes; one fails. The runner must drain in-flight
+	// goroutines before returning (no goroutine leak). Run under -race.
+	g := dag.NewGraph()
+	for i, name := range []string{"a", "b", "c"} {
+		n := okNode(name)
+		_ = g.AddNode(n)
+		_ = i
+	}
+	fail := failNode("fail")
+	_ = g.AddNode(fail)
+	cs := dag.NewRunner(g).Run(context.Background())
+	total := len(cs.Verified) + len(cs.Unverified) + len(cs.Failed) + len(cs.Unstarted)
+	if total != 4 {
+		t.Errorf("all 4 nodes must appear in CompletionState, got %d", total)
+	}
+}

@@ -18,6 +18,7 @@ package watchmanager
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -157,38 +158,18 @@ var _ reconcile.Reconciler = (*Adapter)(nil)
 
 // GVKFromString parses a "group/version/Kind" string into a GroupVersionKind.
 // Convenience helper for operator main() functions.
+//
+// Accepted formats:
+//   - "group/version/Kind"  e.g. "apps/v1/Deployment"
+//   - "version/Kind"        e.g. "v1/ConfigMap"  (core group, empty group)
 func GVKFromString(s string) (schema.GroupVersionKind, error) {
-	var group, version, kind string
-	switch parts := splitN(s, "/", 3); len(parts) {
+	parts := strings.SplitN(s, "/", 3)
+	switch len(parts) {
 	case 3:
-		group, version, kind = parts[0], parts[1], parts[2]
+		return schema.GroupVersionKind{Group: parts[0], Version: parts[1], Kind: parts[2]}, nil
 	case 2:
-		// version/Kind (core group)
-		version, kind = parts[0], parts[1]
+		return schema.GroupVersionKind{Group: "", Version: parts[0], Kind: parts[1]}, nil
 	default:
-		return schema.GroupVersionKind{}, fmt.Errorf("watchmanager: GVKFromString: expected group/version/Kind, got %q", s)
+		return schema.GroupVersionKind{}, fmt.Errorf("watchmanager: GVKFromString: expected group/version/Kind or version/Kind, got %q", s)
 	}
-	return schema.GroupVersionKind{Group: group, Version: version, Kind: kind}, nil
-}
-
-func splitN(s, sep string, n int) []string {
-	var out []string
-	for i := 0; i < n-1; i++ {
-		idx := lastIndex(s, sep)
-		if idx < 0 {
-			break
-		}
-		out = append([]string{s[idx+len(sep):]}, out...)
-		s = s[:idx]
-	}
-	return append([]string{s}, out...)
-}
-
-func lastIndex(s, sep string) int {
-	for i := len(s) - len(sep); i >= 0; i-- {
-		if s[i:i+len(sep)] == sep {
-			return i
-		}
-	}
-	return -1
 }

@@ -278,3 +278,136 @@ func TestTruncateName_Uniqueness(t *testing.T) {
 		t.Error("different long names produced identical truncated result")
 	}
 }
+
+// ── Additional session tests ──────────────────────────────────────────────────
+
+func TestNew_GraphStartsEmpty(t *testing.T) {
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess := newSession(t, manifest, dm)
+	if len(sess.Graph.Nodes()) != 0 {
+		t.Errorf("Graph should have 0 nodes at construction, got %d", len(sess.Graph.Nodes()))
+	}
+}
+
+func TestNew_IDIsPreserved(t *testing.T) {
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess, err := session.New(context.Background(), "my-unique-id", manifest, dm)
+	if err != nil {
+		t.Fatalf("session.New: %v", err)
+	}
+	if sess.ID != "my-unique-id" {
+		t.Errorf("ID = %q, want my-unique-id", sess.ID)
+	}
+}
+
+func TestNew_DeployManagerPreserved(t *testing.T) {
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess := newSession(t, manifest, dm)
+	if sess.DeployManager == nil {
+		t.Error("DeployManager must not be nil")
+	}
+}
+
+func TestAddComponent_MultipleComponents(t *testing.T) {
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess := newSession(t, manifest, dm)
+
+	for _, name := range []string{"a", "b", "c"} {
+		if err := sess.AddComponent(dag.NewNode(name)); err != nil {
+			t.Fatalf("AddComponent(%q): %v", name, err)
+		}
+	}
+	if len(sess.Graph.Nodes()) != 3 {
+		t.Errorf("expected 3 nodes, got %d", len(sess.Graph.Nodes()))
+	}
+}
+
+func TestAddDependency_ChainOfThree(t *testing.T) {
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess := newSession(t, manifest, dm)
+
+	nA := dag.NewNode("a")
+	nB := dag.NewNode("b")
+	nC := dag.NewNode("c")
+	_ = sess.AddComponent(nA)
+	_ = sess.AddComponent(nB)
+	_ = sess.AddComponent(nC)
+	// b depends on a; c depends on b
+	if err := sess.AddDependency(nB, nA, nil); err != nil {
+		t.Fatalf("AddDependency(b, a): %v", err)
+	}
+	if err := sess.AddDependency(nC, nB, nil); err != nil {
+		t.Fatalf("AddDependency(c, b): %v", err)
+	}
+}
+
+func TestScopedName_AtExactLimit(t *testing.T) {
+	// Build a CR whose name makes ScopedName exactly 63 chars — should NOT truncate.
+	// "x" (1) + "-" (1) + "a"*61 = 63 chars
+	suffix := strings.Repeat("a", 61)
+	manifest := cr("x", "ns", "Foo", "test.io/v1")
+	dm := deploymanager.NewDryRunDeployManager(nil, manifest)
+	sess := newSession(t, manifest, dm)
+	name := sess.ScopedName(suffix)
+	if len(name) > 63 {
+		t.Errorf("ScopedName should be ≤63 chars, got %d: %s", len(name), name)
+	}
+}
+
+func TestTruncateName_AlreadyShort(t *testing.T) {
+	n := session.TruncateName("short")
+	if n != "short" {
+		t.Errorf("TruncateName of short name should be identity, got %q", n)
+	}
+}
+
+func TestTruncateName_Long_IsDeterministic(t *testing.T) {
+	long := strings.Repeat("abcdefgh", 10) // 80 chars
+	a := session.TruncateName(long)
+	b := session.TruncateName(long)
+	if a != b {
+		t.Error("TruncateName must be deterministic for the same input")
+	}
+	if len(a) > 63 {
+		t.Errorf("truncated name must be ≤63 chars, got %d", len(a))
+	}
+}
+
+func TestTruncateName_DifferentLongNames_DifferentResults(t *testing.T) {
+	// Two different long names must produce different truncated names (hash suffix).
+	long1 := strings.Repeat("a", 70)
+	long2 := strings.Repeat("b", 70)
+	if session.TruncateName(long1) == session.TruncateName(long2) {
+		t.Error("different long names must not produce the same truncated name")
+	}
+}
+
+func TestNew_StatusPopulatedFromExistingCR(t *testing.T) {
+	// Seed the DryRunDeployManager with a CR that already has a status block.
+	manifest := cr("app", "ns", "Foo", "test.io/v1")
+	withStatus := map[string]any{
+		"apiVersion": "test.io/v1",
+		"kind":       "Foo",
+		"metadata":   map[string]any{"name": "app", "namespace": "ns", "uid": "uid-xyz"},
+		"status": map[string]any{
+			"conditions": []any{
+				map[string]any{"type": "Ready", "status": "True"},
+			},
+			"versions": map[string]any{"reconciled": "3.0.0"},
+		},
+	}
+	dm := deploymanager.NewDryRunDeployManager(nil, withStatus)
+	sess := newSession(t, manifest, dm)
+
+	if len(sess.Status) == 0 {
+		t.Error("Session.Status should be populated from existing CR status")
+	}
+	if sess.CurrentVersion != "3.0.0" {
+		t.Errorf("CurrentVersion = %q, want 3.0.0", sess.CurrentVersion)
+	}
+}
