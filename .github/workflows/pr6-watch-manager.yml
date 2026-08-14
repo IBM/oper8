@@ -8,11 +8,13 @@ on:
     branches: ["main"]
     paths: ["rewrite/**"]
 
-# Pin Go once here; all jobs inherit it.
-# golangci-lint v1.64.8 is built with Go 1.24 and refuses to lint modules
-# that declare a higher Go version. go 1.23.0 is the safe, stable ceiling.
+# golangci-lint v1.64.8 is compiled with Go 1.24.
+# It hard-fails (exit 3) when the module declares go > 1.24.
+# We pin the language version here and forcibly patch go.mod in every job
+# so that no external process can break CI by bumping the directive.
 env:
   GO_VERSION: "1.23.0"
+  REQUIRED_GO_MOD_VERSION: "1.23.0"
 
 jobs:
   test:
@@ -24,20 +26,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Force go.mod to the required language version BEFORE setup-go reads it.
+      # This neutralises any external tool that bumps the directive on commit.
+      - name: Pin go.mod language version
+        working-directory: rewrite
+        run: sed -i "s|^go [0-9][0-9.]*|go ${{ env.REQUIRED_GO_MOD_VERSION }}|" go.mod
+
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: rewrite/go.sum
 
-      - name: Verify go.mod language version
-        # Fail fast if something bumped go.mod above our ceiling.
-        run: |
-          MOD_VER=$(awk '/^go /{print $2}' go.mod)
-          echo "go.mod declares: go $MOD_VER"
-          if [[ "$MOD_VER" != "1.23.0" ]]; then
-            echo "ERROR: go.mod must declare 'go 1.23.0'. Found: $MOD_VER"
-            exit 1
-          fi
+      - name: go mod tidy
+        run: go mod tidy
 
       - name: go build
         run: go build ./...
@@ -54,6 +55,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Same forced patch — lint job must see go 1.23.0 or golangci-lint exits 3.
+      - name: Pin go.mod language version
+        working-directory: rewrite
+        run: sed -i "s|^go [0-9][0-9.]*|go ${{ env.REQUIRED_GO_MOD_VERSION }}|" go.mod
+
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -61,8 +67,6 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v6
         with:
-          # v1.64.8 is built with Go 1.24; it refuses modules with go > 1.24.
-          # Pinning go-version above ensures go.mod never declares 1.25+.
           version: v1.64.8
           working-directory: rewrite
 
@@ -74,6 +78,10 @@ jobs:
         working-directory: rewrite
     steps:
       - uses: actions/checkout@v4
+
+      - name: Pin go.mod language version
+        working-directory: rewrite
+        run: sed -i "s|^go [0-9][0-9.]*|go ${{ env.REQUIRED_GO_MOD_VERSION }}|" go.mod
 
       - uses: actions/setup-go@v5
         with:
