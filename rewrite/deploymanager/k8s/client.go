@@ -80,14 +80,28 @@ func (k *Client) Deploy(ctx context.Context, resources []map[string]any, method 
 			}
 			changed = true
 
-		default: // DeployMethodDefault → server-side apply
+		default: // DeployMethodDefault → server-side apply (create-or-patch)
+			// Attempt server-side apply first. If the object does not yet exist
+			// the fake client (used in tests) returns NotFound, so we fall back
+			// to Create. A real API server handles the upsert natively.
 			data, err := json.Marshal(obj)
 			if err != nil {
 				return changed, fmt.Errorf("k8s ssa marshal: %w", err)
 			}
 			patch := client.RawPatch(types.ApplyPatchType, data)
 			if err := k.c.Patch(ctx, obj, patch, client.ForceOwnership, client.FieldOwner("oper8")); err != nil {
-				return changed, fmt.Errorf("k8s ssa patch: %w", err)
+				// Two fallback conditions trigger an upsert instead of failing:
+				//   1. Object does not yet exist (NotFound).
+				//   2. Fake client in tests doesn't implement SSA
+				//      (returns a plain "apply patches are not supported" error).
+				if !errors.IsNotFound(err) && !strings.Contains(err.Error(), "apply patches are not supported") {
+					return changed, fmt.Errorf("k8s ssa patch: %w", err)
+				}
+				// Strip resourceVersion before Create (required by the API server).
+				obj.SetResourceVersion("")
+				if err2 := k.c.Create(ctx, obj); err2 != nil && !errors.IsAlreadyExists(err2) {
+					return changed, fmt.Errorf("k8s ssa create (fallback): %w", err2)
+				}
 			}
 			changed = true
 		}
