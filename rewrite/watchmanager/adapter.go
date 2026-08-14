@@ -166,10 +166,15 @@ func GVKFromString(s string) (schema.GroupVersionKind, error) {
 	parts := strings.SplitN(s, "/", 3)
 	switch len(parts) {
 	case 3:
+		if parts[1] == "" || parts[2] == "" {
+			break
+		}
 		return schema.GroupVersionKind{Group: parts[0], Version: parts[1], Kind: parts[2]}, nil
 	case 2:
+		if parts[0] == "" || parts[1] == "" {
+			break
+		}
 		return schema.GroupVersionKind{Group: "", Version: parts[0], Kind: parts[1]}, nil
-	default:
-		return schema.GroupVersionKind{}, fmt.Errorf("watchmanager: GVKFromString: expected group/version/Kind or version/Kind, got %q", s)
 	}
+	return schema.GroupVersionKind{}, fmt.Errorf("watchmanager: GVKFromString: expected group/version/Kind or version/Kind, got %q", s)
 }

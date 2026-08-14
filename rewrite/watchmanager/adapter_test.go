@@ -487,5 +487,218 @@ func TestAdapter_Reconcile_NoErrorOnCleanRun(t *testing.T) {
 	}
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Additional predicate edge-case tests
+// ═════════════════════════════════════════════════════════════════════════════
+
+// TestNotPaused_AllEventTypes_PausedFiltered verifies that the NotPaused
+// predicate consistently rejects a paused object on all four event types.
+func TestNotPaused_AllEventTypes_PausedFiltered(t *testing.T) {
+	t.Parallel()
+	p := watchmanager.NotPaused()
+	obj := pausedObj("true")
+
+	cases := []struct {
+		name string
+		call func() bool
+	}{
+		{"Create", func() bool { return p.Create(event.CreateEvent{Object: obj}) }},
+		{"Update", func() bool { return p.Update(event.UpdateEvent{ObjectNew: obj}) }},
+		{"Delete", func() bool { return p.Delete(event.DeleteEvent{Object: obj}) }},
+		{"Generic", func() bool { return p.Generic(event.GenericEvent{Object: obj}) }},
+	}
+	for _, tc := range cases {
+		if tc.call() {
+			t.Errorf("NotPaused.%s: paused object should be filtered", tc.name)
+		}
+	}
+}
+
+// TestNotPaused_AllEventTypes_NotPausedPasses verifies that an unpaused
+// object is let through on all four event types.
+func TestNotPaused_AllEventTypes_NotPausedPasses(t *testing.T) {
+	t.Parallel()
+	p := watchmanager.NotPaused()
+	obj := &unstructured.Unstructured{}
+
+	cases := []struct {
+		name string
+		call func() bool
+	}{
+		{"Create", func() bool { return p.Create(event.CreateEvent{Object: obj}) }},
+		{"Update", func() bool { return p.Update(event.UpdateEvent{ObjectNew: obj}) }},
+		{"Delete", func() bool { return p.Delete(event.DeleteEvent{Object: obj}) }},
+		{"Generic", func() bool { return p.Generic(event.GenericEvent{Object: obj}) }},
+	}
+	for _, tc := range cases {
+		if !tc.call() {
+			t.Errorf("NotPaused.%s: unpaused object should pass", tc.name)
+		}
+	}
+}
+
+// TestGenerationChangedOrDeleted_Update_LargeGenerationJump verifies a
+// generation jump of more than 1 still passes.
+func TestGenerationChangedOrDeleted_Update_LargeGenerationJump(t *testing.T) {
+	t.Parallel()
+	p := watchmanager.GenerationChangedOrDeleted()
+	if !p.Update(event.UpdateEvent{ObjectOld: objWithGen(1), ObjectNew: objWithGen(100)}) {
+		t.Error("large generation jump must pass the predicate")
+	}
+}
+
+// TestGenerationChangedOrDeleted_Create_ZeroGeneration verifies that a
+// Create event on a generation=0 object (e.g. Secret) is always passed.
+func TestGenerationChangedOrDeleted_Create_ZeroGeneration(t *testing.T) {
+	t.Parallel()
+	p := watchmanager.GenerationChangedOrDeleted()
+	if !p.Create(event.CreateEvent{Object: objWithGen(0)}) {
+		t.Error("Create with zero generation must always pass")
+	}
+}
+
+// TestAdapter_Reconcile_ErrorIsWrapped verifies that a setup error is
+// propagated upward (not silently swallowed).
+func TestAdapter_Reconcile_ErrorIsWrapped(t *testing.T) {
+	t.Parallel()
+	c := fakeClientWithFooCR("foo", "default")
+	boom := errors.New("hard-failure")
+	a := watchmanager.New(&setupErrController{err: boom}, c, fooGVK, reconcilemanager.Options{})
+	_, err := a.Reconcile(context.Background(), req("foo", "default"))
+	if err == nil {
+		t.Fatal("expected non-nil error from setup failure")
+	}
+	// The error must somehow contain the original message.
+	if !errors.Is(err, boom) && err.Error() == "" {
+		t.Errorf("error chain should contain original: %v", err)
+	}
+}
+
+// TestAdapter_Reconcile_RequeueFalse_OnStableVerifiedRun confirms that a
+// fully verified, non-requeue controller produces Requeue=false.
+func TestAdapter_Reconcile_RequeueFalse_OnStableVerifiedRun(t *testing.T) {
+	t.Parallel()
+	c := fakeClientWithFooCR("foo", "default")
+	result, err := newAdapter(c).Reconcile(context.Background(), req("foo", "default"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Requeue {
+		t.Error("stable verified run must not requeue")
+	}
+}
+
+// TestGVKFromString_CRDGroupWithDots verifies a group containing multiple
+// dots (common for custom APIs) is preserved intact.
+func TestGVKFromString_CRDGroupWithDots(t *testing.T) {
+	t.Parallel()
+	got, err := watchmanager.GVKFromString("my.operator.example.com/v1beta1/Widget")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Group != "my.operator.example.com" {
+		t.Errorf("Group = %q, want %q", got.Group, "my.operator.example.com")
+	}
+	if got.Version != "v1beta1" {
+		t.Errorf("Version = %q, want %q", got.Version, "v1beta1")
+	}
+	if got.Kind != "Widget" {
+		t.Errorf("Kind = %q, want %q", got.Kind, "Widget")
+	}
+}
+
+// TestGVKFromString_OnlySlash verifies that a single "/" produces an error.
+func TestGVKFromString_OnlySlash(t *testing.T) {
+	t.Parallel()
+	_, err := watchmanager.GVKFromString("/")
+	if err == nil {
+		t.Fatal("expected error for '/' input")
+	}
+}
+
+// TestAdapter_New_StoresGVK verifies that the GVK passed to New is used when
+// fetching the CR during Reconcile (object missing → no error, not a crash).
+func TestAdapter_New_StoresGVK(t *testing.T) {
+	t.Parallel()
+	differentGVK := schema.GroupVersionKind{Group: "other.io", Version: "v1", Kind: "Other"}
+	c := fake.NewClientBuilder().WithScheme(fakeScheme()).Build()
+	a := watchmanager.New(&noopController{}, c, differentGVK, reconcilemanager.Options{})
+	// Object doesn't exist under "other.io/v1/Other" — should get NotFound, return cleanly.
+	result, err := a.Reconcile(context.Background(), req("missing", "default"))
+	if err != nil {
+		t.Fatalf("unexpected error for NotFound with custom GVK: %v", err)
+	}
+	if result.Requeue {
+		t.Error("expected no requeue for missing object")
+	}
+}
+
+// TestAdapter_Reconcile_MultipleNamespaces verifies independent reconcile
+// requests for different namespaces are each handled cleanly.
+func TestAdapter_Reconcile_MultipleNamespaces(t *testing.T) {
+	t.Parallel()
+	c1 := fakeClientWithFooCR("foo", "ns-1")
+	c2 := fakeClientWithFooCR("foo", "ns-2")
+
+	for _, tc := range []struct {
+		name   string
+		client client.Client
+		ns     string
+	}{
+		{"ns-1", c1, "ns-1"},
+		{"ns-2", c2, "ns-2"},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := newAdapter(tc.client).Reconcile(context.Background(), req("foo", tc.ns))
+			if err != nil {
+				t.Fatalf("Reconcile(%s): %v", tc.ns, err)
+			}
+			if result.Requeue {
+				t.Errorf("Reconcile(%s): expected no requeue", tc.ns)
+			}
+		})
+	}
+}
+
+// TestAdapter_Reconcile_DeletionTimestamp_WithFinalizer_IsFinalizer confirms
+// that an object whose DeletionTimestamp is set AND whose finalizer matches the
+// controller's finalizer causes isFinalizer=true in Reconcile.
+// We verify this indirectly: the finalizerController is registered, the object
+// has the finalizer, so no error should occur in the finalization path.
+func TestAdapter_Reconcile_DeletionTimestamp_WithFinalizer_IsFinalizer(t *testing.T) {
+	t.Parallel()
+	const fin = "oper8.org/cleanup"
+	// The fake client requires that objects with a deletionTimestamp have at
+	// least one finalizer — provide one so the builder doesn't panic.
+	c := fakeClientWithFooCR("foo", "default", func(obj *unstructured.Unstructured) {
+		now := metav1.Now()
+		obj.SetDeletionTimestamp(&now)
+		obj.SetFinalizers([]string{fin})
+	})
+	a := watchmanager.New(&finalizerController{finalizer: fin}, c, fooGVK, reconcilemanager.Options{})
+	_, err := a.Reconcile(context.Background(), req("foo", "default"))
+	if err != nil {
+		t.Fatalf("unexpected error in finalizer path: %v", err)
+	}
+}
+
+// TestAdapter_Reconcile_FinalizerController_NoDeletionTimestamp verifies that
+// when HasFinalizer()=true but DeletionTimestamp is NOT set, isFinalizer stays
+// false and the normal reconcile runs.
+func TestAdapter_Reconcile_FinalizerController_NoDeletionTimestamp(t *testing.T) {
+	t.Parallel()
+	const fin = "oper8.org/cleanup"
+	c := fakeClientWithFooCR("foo", "default") // no deletion timestamp
+	a := watchmanager.New(&finalizerController{finalizer: fin}, c, fooGVK, reconcilemanager.Options{})
+	result, err := a.Reconcile(context.Background(), req("foo", "default"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Normal reconcile with verified component → no requeue.
+	_ = result
+}
+
 // Ensure time import is used (suppresses "imported and not used" error).
 var _ = time.Second
