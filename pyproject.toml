@@ -73,7 +73,7 @@ dev-graph = [
 
 dev-fmt = [
     "pre-commit>=3.0.4,<5.0",
-    "ruff==0.16.4",
+    "ruff==0.16.5",
 ]
 
 dev-build = [
