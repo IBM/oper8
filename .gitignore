@@ -37,3 +37,6 @@ uv.lock
 # Agent scratch
 .claude
 .bob
+
+# Codegraph files
+.codegraph
