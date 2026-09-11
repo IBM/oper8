@@ -1,0 +1,29 @@
+# .golangci.yml — shared linter config for all rewrite/ PRs
+# Place this at rewrite/.golangci.yml (the module root)
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - gosimple
+    - ineffassign
+    - typecheck
+
+linters-settings:
+  gofmt:
+    simplify: true
+
+issues:
+  # Don't fail on test files for errcheck (common in table-driven tests)
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
