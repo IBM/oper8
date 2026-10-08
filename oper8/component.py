@@ -19,7 +19,7 @@ from . import config
 from .constants import INTERNAL_NAME_ANNOTATION_NAME, TEMPORARY_PATCHES_ANNOTATION_NAME
 from .dag import Graph, Node, ResourceNode
 from .deploy_manager import DeployMethod
-from .exceptions import assert_cluster
+from .exceptions import assert_cluster, assert_config
 from .managed_object import ManagedObject
 from .patch import apply_patches
 from .session import COMPONENT_VERIFY_FUNCTION, Session
@@ -478,12 +478,21 @@ class Component(Node, abc.ABC):
             # Apply any patches to this object
             log.debug2("Applying patches to managed object: %s", name)
             log.debug4("Before Patching: %s", obj)
+            namespace = obj.get("metadata", {}).get("namespace")
             obj = apply_patches(name, obj, session.temporary_patches)
 
             # Make sure any temporary patch annotations that exist already
             # on this resource in the cluster are preserved
             log.debug2("Checking for existing subsystem patches on: %s", name)
             obj = self._preserve_patch_annotation(session, name, obj)
+
+            # Make sure that patching did not move the object to a different
+            # namespace than the one it was rendered with
+            updated_ns = obj.get("metadata", {}).get("namespace")
+            assert_config(
+                updated_ns == namespace,
+                f"Patching changed the namespace of [{name}] from [{namespace}] to [{updated_ns}]",
+            )
 
             # Add the internal name annotation if enabled
             if config.internal_name_annotation:
