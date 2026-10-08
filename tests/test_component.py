@@ -6,6 +6,7 @@ Test the implementations of the default functions in Component
 from unittest import mock
 import copy
 import os
+import sys
 import tempfile
 
 # Third Party
@@ -169,8 +170,14 @@ def test_apply_patches_namespace_change_rejected():
         obj["metadata"]["namespace"] = "victim-ns"
         return obj
 
+    # NOTE: The module is looked up directly since oper8.component is shadowed
+    #   by the @component decorator on the oper8 package
     comp = get_comp_type()(session=session, api_objects=[("bar", bar)])
-    with mock.patch("oper8.component.apply_patches", side_effect=move_namespace):
+    with mock.patch.object(
+        sys.modules[Component.__module__],
+        "apply_patches",
+        side_effect=move_namespace,
+    ):
         with pytest.raises(ConfigError):
             comp.render_chart(session)
 
