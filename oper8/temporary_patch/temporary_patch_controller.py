@@ -28,8 +28,7 @@ class TemporaryPatchController(Controller):
     The TemporaryPatchController is a custom Controller implementation that
     manages temporary patch resources for `oper8`.
 
-    See the ADR for full details:
-        docs/adr/03-patches.md
+    See docs/temporary_patches.md for full details.
 
     NOTE: When deploying using OLM, there is a requirement that only a single
         operator in a given namespace control each group/version/kind. In this
@@ -45,6 +44,11 @@ class TemporaryPatchController(Controller):
     class MyTemporaryPatchController(TemporaryPatchController):
         '''The temporary patch class for my operator!'''
     ```
+
+    NOTE: Custom patch kinds are allowed automatically when the subclass is
+        loaded in the same process as the controller for the target resource.
+        Otherwise, the kind must be added to `temporary_patch.allowed_kinds`
+        in the library config. See docs/temporary_patches.md.
     """
 
     def __init__(
@@ -77,6 +81,34 @@ class TemporaryPatchController(Controller):
         self._do_setup_components(session, is_finalizer=True)
 
     ## Shared Utilities ########################################################
+
+    @classmethod
+    def get_temporary_patch_kinds(cls) -> List[str]:
+        """Get the `apiVersion/kind` labels for this class and all loaded
+        subclasses. This is used to determine which kinds may be used as
+        temporary patch sources when they are not explicitly configured.
+
+        NOTE: Only subclasses that have been imported in the current process
+            can be discovered.
+
+        Returns:
+            patch_kinds:  List[str]
+                The unique `group/version/kind` labels for all known
+                TemporaryPatchController classes
+        """
+        patch_kinds = []
+        to_visit = [cls]
+        while to_visit:
+            current = to_visit.pop(0)
+            to_visit.extend(current.__subclasses__())
+            if not all(
+                getattr(current, attr, None) for attr in ["group", "version", "kind"]
+            ):
+                continue
+            kind_label = cls._patchable_kind_label(current)
+            if kind_label not in patch_kinds:
+                patch_kinds.append(kind_label)
+        return patch_kinds
 
     ## Implementation Details ##################################################
 

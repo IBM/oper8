@@ -2,6 +2,9 @@
 Test the patching semantics
 """
 
+# Standard
+import copy
+
 # Third Party
 import pytest
 
@@ -10,6 +13,7 @@ import aconfig
 import alog
 
 # Local
+from oper8.exceptions import ConfigError
 from oper8.patch import JSON_PATCH_6902, STRATEGIC_MERGE_PATCH, apply_patches
 from oper8.test_helpers.helpers import configure_logging, make_patch
 
@@ -399,3 +403,266 @@ def test_only_applicable_patches():
     assert res == expected
     # Just to make it clear
     assert res["spec"]["containers"][0]["image"] == "foo"
+
+
+#########################
+## Identity Protection ##
+#########################
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/metadata/namespace",
+        "/metadata/name",
+        "/kind",
+        "/apiVersion",
+    ],
+)
+def test_json6902_identity_field_changes_raise(path):
+    """JSON6902 patches changing identity fields must raise ConfigError"""
+    obj = sample_pod([{"name": "foo", "image": "foo"}])
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {"op": "replace", "path": path, "value": "changed"},
+                ]
+            }
+        },
+    )
+    with pytest.raises(ConfigError):
+        apply_patches("foo.pod", obj, [patch])
+
+
+def test_json6902_replace_metadata_raises():
+    """JSON6902 replace on /metadata with a dict raises ConfigError"""
+    obj = sample_pod([{"name": "foo", "image": "foo"}])
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {"op": "replace", "path": "/metadata", "value": {"labels": {}}},
+                ]
+            }
+        },
+    )
+    with pytest.raises(ConfigError):
+        apply_patches("foo.pod", obj, [patch])
+
+
+def test_json6902_move_from_metadata_name_raises():
+    """JSON6902 move with from=/metadata/name raises ConfigError"""
+    obj = sample_pod([{"name": "foo", "image": "foo"}])
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {"op": "move", "path": "/metadata/name", "from": "/metadata/name"},
+                ]
+            }
+        },
+    )
+    with pytest.raises(ConfigError):
+        apply_patches("foo.pod", obj, [patch])
+
+
+def test_json6902_root_replace_raises():
+    """JSON6902 root (empty path) replace raises ConfigError"""
+    obj = sample_pod([{"name": "foo", "image": "foo"}])
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {"op": "replace", "path": "", "value": {"kind": "Test"}},
+                ]
+            }
+        },
+    )
+    with pytest.raises(ConfigError):
+        apply_patches("foo.pod", obj, [patch])
+
+
+def test_json6902_test_op_on_namespace_allowed():
+    """JSON6902 test operations on protected fields must be allowed (read-only)"""
+    obj = {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {"name": "foo", "namespace": "test-ns"},
+        "spec": {"containers": []},
+    }
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {"op": "test", "path": "/metadata/namespace", "value": "test-ns"},
+                ]
+            }
+        },
+    )
+    res = apply_patches("foo.pod", obj, [patch])
+    assert res["metadata"]["namespace"] == "test-ns"
+
+
+def test_json6902_copy_from_name_to_labels_allowed():
+    """JSON6902 copy operations from /metadata/name to /metadata/labels/name must work"""
+    obj = {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {"name": "foo", "namespace": "test", "labels": {}},
+        "spec": {"containers": []},
+    }
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {
+                        "op": "copy",
+                        "path": "/metadata/labels/name",
+                        "from": "/metadata/name",
+                    },
+                ]
+            }
+        },
+    )
+    res = apply_patches("foo.pod", obj, [patch])
+    assert res["metadata"]["labels"]["name"] == "foo"
+
+
+def test_json6902_labels_annotations_allowed():
+    """JSON6902 operations on /metadata/labels and /metadata/annotations must work"""
+    obj = {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {
+            "name": "foo",
+            "namespace": "test",
+            "labels": {},
+            "annotations": {},
+        },
+        "spec": {"containers": []},
+    }
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {"op": "add", "path": "/metadata/labels/foo", "value": "bar"},
+                    {"op": "add", "path": "/metadata/annotations/test", "value": "val"},
+                ]
+            }
+        },
+    )
+    res = apply_patches("foo.pod", obj, [patch])
+    assert res["metadata"]["labels"]["foo"] == "bar"
+    assert res["metadata"]["annotations"]["test"] == "val"
+
+
+def test_identity_protection_preserves_input_not_mutated():
+    """Verify the original input resource_definition dict is not mutated in raising case"""
+    obj = {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {"name": "foo", "namespace": "test"},
+        "spec": {"containers": []},
+    }
+    original = copy.deepcopy(obj)
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {
+            "foo": {
+                "pod": [
+                    {"op": "replace", "path": "/metadata/namespace", "value": "new-ns"},
+                ]
+            }
+        },
+    )
+    with pytest.raises(ConfigError):
+        apply_patches("foo.pod", obj, [patch])
+    # Verify input was not mutated
+    assert obj == original
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        {"op": "remove", "path": "/metadata/namespace"},
+        {"op": "add", "path": "/metadata/namespace", "value": "other"},
+        {"op": "remove", "path": "/metadata"},
+        {"op": "add", "path": "/metadata/name/foo", "value": "bar"},
+        {"op": "move", "from": "/metadata", "path": "/spec/metadata"},
+        {"op": "copy", "from": "/spec", "path": "/metadata"},
+    ],
+)
+def test_json6902_other_identity_operations_raise(operation):
+    """Make sure that add/remove/move/copy operations that would touch the
+    protected identity fields are rejected
+    """
+    obj = sample_pod()
+    obj["metadata"]["namespace"] = "test"
+    patch = make_patch(JSON_PATCH_6902, {"foo": {"pod": [operation]}})
+    with pytest.raises(ConfigError):
+        apply_patches("foo.pod", obj, [patch])
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"metadata": {"namespace": "other"}},
+        {"metadata": {"namespace": None}},
+        {"metadata": {"name": "other"}},
+        {"metadata": None},
+        {"kind": "ConfigMap"},
+        {"apiVersion": "v2"},
+    ],
+)
+def test_psm_identity_field_changes_raise(body):
+    """Strategic merge patches changing identity fields must raise ConfigError"""
+    obj = sample_pod()
+    obj["metadata"]["namespace"] = "test"
+    original = copy.deepcopy(obj)
+    patch = make_patch(STRATEGIC_MERGE_PATCH, {"foo": {"pod": body}})
+    with pytest.raises(ConfigError):
+        apply_patches("foo.pod", obj, [patch])
+    assert obj == original
+
+
+def test_psm_non_identity_metadata_allowed():
+    """Strategic merge patches that modify metadata without changing the
+    identity of the resource are allowed
+    """
+    obj = sample_pod()
+    obj["metadata"]["namespace"] = "test"
+    patch = make_patch(
+        STRATEGIC_MERGE_PATCH,
+        {
+            "foo": {
+                "pod": {
+                    "metadata": {"namespace": "test", "labels": {"foo": "bar"}},
+                    "spec": {"restartPolicy": "Never"},
+                }
+            }
+        },
+    )
+    res = apply_patches("foo.pod", obj, [patch])
+    assert res["metadata"]["labels"] == {"foo": "bar"}
+    assert res["metadata"]["namespace"] == "test"
+    assert res["spec"]["restartPolicy"] == "Never"
+
+
+def test_identity_check_only_matching_patches():
+    """Make sure that a patch for a different resource does not trigger the
+    identity check for an unrelated resource
+    """
+    obj = sample_pod()
+    patch = make_patch(
+        JSON_PATCH_6902,
+        {"bar": {"pod": [{"op": "replace", "path": "/spec", "value": {}}]}},
+    )
+    assert apply_patches("foo.pod", obj, [patch]) == obj

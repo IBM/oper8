@@ -4,6 +4,7 @@ nav:
   - Architecture:
       - Overview: architecture.md
       - Session Dependency Graph: session_dependency_graph.md
+      - Temporary Patches: temporary_patches.md
   - API References: API References.md
 theme:
   name: material

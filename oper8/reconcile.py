@@ -46,11 +46,16 @@ from .exceptions import (
     assert_config,
 )
 from .log_format import Oper8JsonFormatter
+from .patch import JSON_PATCH_6902, STRATEGIC_MERGE_PATCH
 from .session import Session
 from .utils import add_finalizer, get_manifest_version, merge_configs, remove_finalizer
 from .vcs import VCS, VCSCheckoutMethod, VCSMultiProcessError
 
 log = alog.use_channel("RECONCILE")
+
+# The set of (apiVersion, kind) pairs that have already been warned about for
+# not being in the allowed temporary patch kinds
+_WARNED_TEMP_PATCH_KINDS = set()
 
 
 ## Data models #################################################################
@@ -986,6 +991,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             namespace = cr_manifest.get("metadata", {}).get("namespace")
             patch_api_version = patch_meta["api_version"]
             patch_kind = patch_meta.get("kind", "TemporaryPatch")
+            self._check_temp_patch_kind(
+                cr_manifest, patch_name, patch_api_version, patch_kind
+            )
             success, content = deploy_manager.get_object_current_state(
                 kind=patch_kind,
                 name=patch_name,
@@ -995,14 +1003,137 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             assert_cluster(success, f"Failed to fetch patch content for [{patch_name}]")
             assert_config(content is not None, f"Patch not found [{patch_name}]")
 
-            # Pull the patch spec and add it to the list
-            assert_config(
-                content.get("spec") is not None,
-                f"No spec found in patch [{patch_name}]",
+            # Make sure the patch is valid for this CR and add it to the list
+            self._check_temp_patch_content(
+                cr_manifest, patch_name, patch_api_version, patch_kind, content
             )
             temporary_patches.append(aconfig.Config(content, override_env_vars=False))
 
         return temporary_patches
+
+    @staticmethod
+    def _check_temp_patch_kind(
+        cr_manifest: aconfig.Config,
+        patch_name: str,
+        patch_api_version: str,
+        patch_kind: str,
+    ):
+        """Check that the kind referenced by a temporary patch annotation entry
+        may be used as a temporary patch source. Since the annotation can be
+        written by anyone who can edit the CR, the kind it names is not
+        trusted.
+
+        Args:
+            cr_manifest:  aconfig.Config
+                The manifest of this reconciliation
+            patch_name:  str
+                The name of the patch from the annotation
+            patch_api_version:  str
+                The apiVersion of the patch from the annotation
+            patch_kind:  str
+                The kind of the patch from the annotation
+        """
+        # A CR can never be its own patch source
+        assert_config(
+            (_get_api_group(patch_api_version), patch_kind)
+            != (_get_api_group(cr_manifest.get("apiVersion", "")), cr_manifest.kind),
+            f"Temporary patch [{patch_name}] may not use the CR's own kind "
+            f"[{patch_api_version}/{patch_kind}] as a patch source",
+        )
+
+        # Check the patch kind against the allowed kinds
+        temp_patch_config = config.get("temporary_patch") or {}
+        allowed_kinds = temp_patch_config.get("allowed_kinds")
+        if allowed_kinds is None:
+            # Local
+            # pylint: disable=import-outside-toplevel,cyclic-import
+            from .temporary_patch.temporary_patch_controller import (
+                TemporaryPatchController,
+            )
+
+            allowed_kinds = TemporaryPatchController.get_temporary_patch_kinds()
+        if (
+            patch_kind in allowed_kinds
+            or f"{patch_api_version}/{patch_kind}" in allowed_kinds
+        ):
+            return
+        msg = (
+            f"Temporary patch [{patch_name}] has kind [{patch_api_version}/"
+            f"{patch_kind}] which is not in the allowed temporary patch kinds "
+            f"{allowed_kinds}"
+        )
+        if temp_patch_config.get("enforce_allowed_kinds"):
+            log.error(msg)
+            raise ConfigError(msg)
+        if (patch_api_version, patch_kind) not in _WARNED_TEMP_PATCH_KINDS:
+            _WARNED_TEMP_PATCH_KINDS.add((patch_api_version, patch_kind))
+            log.warning(
+                "%s. This will be rejected in a future release. Kinds are "
+                "discovered automatically from TemporaryPatchController classes "
+                "loaded in this process. To allow this kind, add it to "
+                "temporary_patch.allowed_kinds. To reject unknown kinds now, set "
+                "temporary_patch.enforce_allowed_kinds.",
+                msg,
+            )
+
+    @staticmethod
+    def _check_temp_patch_content(
+        cr_manifest: aconfig.Config,
+        patch_name: str,
+        patch_api_version: str,
+        patch_kind: str,
+        content: dict,
+    ):
+        """Check that the fetched content of a temporary patch is a valid patch
+        that targets the CR being reconciled
+
+        Args:
+            cr_manifest:  aconfig.Config
+                The manifest of this reconciliation
+            patch_name:  str
+                The name of the patch from the annotation
+            patch_api_version:  str
+                The apiVersion of the patch from the annotation
+            patch_kind:  str
+                The kind of the patch from the annotation
+            content:  dict
+                The fetched content of the patch
+        """
+        assert_config(
+            content.get("apiVersion") == patch_api_version
+            and content.get("kind") == patch_kind,
+            f"Patch [{patch_name}] has type [{content.get('apiVersion')}/"
+            f"{content.get('kind')}] but expected [{patch_api_version}/{patch_kind}]",
+        )
+        spec = content.get("spec")
+        assert_config(spec is not None, f"No spec found in patch [{patch_name}]")
+
+        # Make sure that the patch targets this CR. The version is not compared
+        # so that patches continue to apply across CRD version conversions.
+        assert_config(
+            (
+                _get_api_group(spec.get("apiVersion") or ""),
+                spec.get("kind"),
+                spec.get("name"),
+            )
+            == (
+                _get_api_group(cr_manifest.get("apiVersion", "")),
+                cr_manifest.kind,
+                cr_manifest.metadata.name,
+            ),
+            f"Patch [{patch_name}] does not target [{cr_manifest.get('apiVersion')}/"
+            f"{cr_manifest.kind}/{cr_manifest.metadata.name}]",
+        )
+
+        # Make sure the patch body is well formed
+        assert_config(
+            spec.get("patchType") in [STRATEGIC_MERGE_PATCH, JSON_PATCH_6902],
+            f"Unsupported patchType [{spec.get('patchType')}] in patch [{patch_name}]",
+        )
+        assert_config(
+            isinstance(spec.get("patch"), dict),
+            f"Patch body must be a dict in patch [{patch_name}]",
+        )
 
     ## Status Details ############################################################
 
@@ -1198,3 +1329,13 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         return self._update_resource_status(
             deploy_manager, cr_manifest, **status_update
         )
+
+
+## Helpers #####################################################################
+
+
+def _get_api_group(api_version: str) -> str:
+    """Get the group portion of an apiVersion. Core types (e.g. v1) have an
+    empty group.
+    """
+    return api_version.rpartition("/")[0]

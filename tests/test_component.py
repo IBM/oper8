@@ -4,7 +4,9 @@ Test the implementations of the default functions in Component
 
 # Standard
 from unittest import mock
+import copy
 import os
+import sys
 import tempfile
 
 # Third Party
@@ -21,6 +23,7 @@ from oper8.constants import TEMPORARY_PATCHES_ANNOTATION_NAME
 from oper8.deploy_manager import DeployMethod
 from oper8.deploy_manager.dry_run_deploy_manager import DryRunDeployManager
 from oper8.deploy_manager.owner_references import _make_owner_reference
+from oper8.exceptions import ConfigError
 from oper8.patch import STRATEGIC_MERGE_PATCH
 from oper8.test_helpers.helpers import (
     TEST_NAMESPACE,
@@ -153,6 +156,52 @@ def test_apply_patches_ok():
     assert objs[1] == merge_configs(
         bat, {"apiVersion": "v1", "metadata": {"namespace": TEST_NAMESPACE}}
     )
+
+
+def test_apply_patches_namespace_change_rejected():
+    """Make sure that rendering fails if patching changes the namespace of a
+    resource, even if the patch module does not catch it
+    """
+    session = setup_session()
+    bar = {"kind": "Foo", "apiVersion": "v1", "metadata": {"name": "bar"}}
+
+    def move_namespace(_, obj, __):
+        obj = copy.deepcopy(obj)
+        obj["metadata"]["namespace"] = "victim-ns"
+        return obj
+
+    # NOTE: The module is looked up directly since oper8.component is shadowed
+    #   by the @component decorator on the oper8 package
+    comp = get_comp_type()(session=session, api_objects=[("bar", bar)])
+    with mock.patch.object(
+        sys.modules[Component.__module__],
+        "apply_patches",
+        side_effect=move_namespace,
+    ):
+        with pytest.raises(ConfigError):
+            comp.render_chart(session)
+
+
+def test_apply_patches_explicit_namespace_ok():
+    """Make sure that resources explicitly rendered into a different namespace
+    can still be patched
+    """
+    patch = make_patch(
+        STRATEGIC_MERGE_PATCH, {"dummy": {"bar": {"new": "value"}}}, "test"
+    )
+    session = setup_session(temporary_patches=[patch])
+    bar = {
+        "kind": "Foo",
+        "apiVersion": "v1",
+        "metadata": {"name": "bar", "namespace": "other-ns"},
+    }
+    with library_config(internal_name_annotation=False):
+        comp = get_comp_type()(session=session, api_objects=[("bar", bar)])
+        comp.render_chart(session)
+        objs = comp.to_config(session)
+    assert len(objs) == 1
+    assert objs[0].metadata.namespace == "other-ns"
+    assert objs[0].new == "value"
 
 
 def test_object_update():
