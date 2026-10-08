@@ -3,6 +3,7 @@ Tests for the TemporaryPatchController
 """
 
 # Local
+from oper8.decorator import controller
 from oper8.patch import STRATEGIC_MERGE_PATCH
 from oper8.temporary_patch.temporary_patch_component import TemporaryPatchComponent
 from oper8.temporary_patch.temporary_patch_controller import TemporaryPatchController
@@ -239,3 +240,33 @@ def test_finalizer_non_patchable_kind_with_api_version():
     ctrlr.finalize_components(session)
     assert not session.get_components(disabled=True)
     assert not session.get_components(disabled=False)
+
+
+## get_temporary_patch_kinds ###################################################
+
+
+def test_get_temporary_patch_kinds():
+    """Make sure that the kinds for the base TemporaryPatchController and all
+    loaded subclasses are discovered
+    """
+
+    @controller(group="my.group", version="v1", kind="MyTemporaryPatch")
+    class MyTemporaryPatchController(TemporaryPatchController):
+        pass
+
+    @controller(group="my.group", version="v2", kind="MyOtherTemporaryPatch")
+    class MyOtherTemporaryPatchController(MyTemporaryPatchController):
+        pass
+
+    class UndecoratedTemporaryPatchController(TemporaryPatchController):
+        pass
+
+    kinds = TemporaryPatchController.get_temporary_patch_kinds()
+    assert kinds[0] == "oper8.org/v1/TemporaryPatch"
+    assert "my.group/v1/MyTemporaryPatch" in kinds
+    assert "my.group/v2/MyOtherTemporaryPatch" in kinds
+    assert len(kinds) == len(set(kinds))
+    assert MyTemporaryPatchController.get_temporary_patch_kinds() == [
+        "my.group/v1/MyTemporaryPatch",
+        "my.group/v2/MyOtherTemporaryPatch",
+    ]
