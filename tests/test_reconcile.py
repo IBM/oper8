@@ -18,15 +18,24 @@ import aconfig
 import alog
 
 # Local
-from oper8 import Controller, config, constants, exceptions, status
+from oper8 import (
+    Controller,
+    config,
+    constants,
+    controller,
+    exceptions,
+    reconcile,
+    status,
+)
 from oper8.dag.completion_state import CompletionState
 from oper8.dag.node import Node
 from oper8.deploy_manager import DryRunDeployManager, OpenshiftDeployManager
 from oper8.exceptions import ConfigError, RolloutError
 from oper8.log_format import Oper8JsonFormatter
-from oper8.patch import STRATEGIC_MERGE_PATCH
+from oper8.patch import JSON_PATCH_6902, STRATEGIC_MERGE_PATCH
 from oper8.reconcile import ReconcileManager, ReconciliationResult, RequeueParams
 from oper8.status import ReadyReason, UpdatingReason
+from oper8.temporary_patch.temporary_patch_controller import TemporaryPatchController
 from oper8.test_helpers.helpers import (
     DummyController,
     MockDeployManager,
@@ -97,6 +106,8 @@ def create_temp_patch_annotation(patch_list=[]):
             "timestamp": timestamp.isoformat(),
             "api_version": api_version,
         }
+        if "kind" in patch:
+            combined_patch[name]["kind"] = patch["kind"]
 
     return {constants.TEMPORARY_PATCHES_ANNOTATION_NAME: json.dumps(combined_patch)}
 
@@ -1151,6 +1162,228 @@ def test_get_temp_patches(cr_manifest, patches, exception):
         assert gathered_patches[index] == patches[index]
 
 
+## _get_temp_patches validation ###############################################
+
+ALLOWED_PATCH_API_VERSION = "oper8.org/v1"
+
+
+def get_temp_patches(cr_manifest, resources):
+    """Shared helper to run _get_temp_patches against the given resources"""
+    dm = MockDeployManager(resources=resources)
+    rm = ReconcileManager(deploy_manager=dm)
+    return rm._get_temp_patches(dm, cr_manifest)
+
+
+def make_patch_cr(patch_name="test", **patch_meta):
+    """Make a CR whose annotation references a single patch"""
+    patch_meta.setdefault("api_version", ALLOWED_PATCH_API_VERSION)
+    return setup_cr(
+        metadata={
+            "annotations": create_temp_patch_annotation(
+                [{"name": patch_name, **patch_meta}]
+            )
+        }
+    )
+
+
+def make_valid_patch(name="test", target=None, **kwargs):
+    """Make a TemporaryPatch that is valid for the CR from make_patch_cr"""
+    kwargs.setdefault("patch_type", STRATEGIC_MERGE_PATCH)
+    kwargs.setdefault("body", {"foo": {"new": "value"}})
+    kwargs.setdefault("api_version", ALLOWED_PATCH_API_VERSION)
+    return make_patch(name=name, target=target or setup_cr(), **kwargs)
+
+
+def test_get_temp_patches_valid_patch():
+    """Make sure that a valid patch from an allowed kind is returned"""
+    patch = make_valid_patch()
+    with library_config(
+        temporary_patch={"allowed_kinds": None, "enforce_allowed_kinds": True}
+    ):
+        assert get_temp_patches(make_patch_cr(), [patch]) == [patch]
+
+
+def test_get_temp_patches_self_patch():
+    """Make sure that a CR cannot name itself as a patch source (the scenario
+    from the reported namespace escape)
+    """
+    cr = setup_cr()
+    cr = setup_cr(
+        metadata={
+            "annotations": create_temp_patch_annotation(
+                [
+                    {
+                        "name": cr.metadata.name,
+                        "api_version": cr.apiVersion,
+                        "kind": cr.kind,
+                    }
+                ]
+            )
+        },
+        spec={
+            "apiVersion": cr.apiVersion,
+            "kind": cr.kind,
+            "name": cr.metadata.name,
+            "patchType": JSON_PATCH_6902,
+            "patch": {
+                "foo": {
+                    "bar": [
+                        {
+                            "op": "replace",
+                            "path": "/metadata/namespace",
+                            "value": "victim-ns",
+                        }
+                    ]
+                }
+            },
+        },
+    )
+    with pytest.raises(ConfigError):
+        get_temp_patches(cr, [cr])
+
+
+def test_get_temp_patches_sibling_cr():
+    """Make sure that a different CR of the same group/kind (even with a
+    different version) cannot be used as a patch source
+    """
+    cr = setup_cr()
+    sibling = make_patch(
+        patch_type=STRATEGIC_MERGE_PATCH,
+        body={"foo": {"new": "value"}},
+        name="sibling",
+        target=cr,
+        api_version="foo.bar.com/v1",
+        kind=cr.kind,
+    )
+    with pytest.raises(ConfigError):
+        get_temp_patches(
+            make_patch_cr("sibling", api_version="foo.bar.com/v1", kind=cr.kind),
+            [sibling],
+        )
+
+
+@pytest.mark.parametrize(
+    ["api_version", "kind"],
+    [
+        ["other.group/v1", "TemporaryPatch"],
+        [ALLOWED_PATCH_API_VERSION, "OtherPatch"],
+    ],
+)
+def test_get_temp_patches_fetched_type_mismatch(api_version, kind):
+    """Make sure that the fetched object must match the type named in the
+    annotation
+    """
+    patch = make_valid_patch(api_version=api_version, kind=kind)
+    dm = MockDeployManager()
+    dm.get_object_current_state = mock.Mock(return_value=(True, patch))
+    rm = ReconcileManager(deploy_manager=dm)
+    with pytest.raises(ConfigError):
+        rm._get_temp_patches(dm, make_patch_cr())
+
+
+@pytest.mark.parametrize(
+    ["target", "valid"],
+    [
+        [setup_cr(name="other"), False],
+        [setup_cr(kind="Gadget"), False],
+        [setup_cr(api_version="other.group/v123"), False],
+        [setup_cr(api_version="foo.bar.com/v1"), True],
+    ],
+)
+def test_get_temp_patches_target_binding(target, valid):
+    """Make sure that the patch must target the CR being reconciled, ignoring
+    the version of the target
+    """
+    patch = make_valid_patch(target=target)
+    if valid:
+        assert get_temp_patches(make_patch_cr(), [patch]) == [patch]
+    else:
+        with pytest.raises(ConfigError):
+            get_temp_patches(make_patch_cr(), [patch])
+
+
+@pytest.mark.parametrize(
+    ["patch_type", "body"],
+    [
+        ["patchBadType", {"foo": {"new": "value"}}],
+        [JSON_PATCH_6902, [{"op": "add", "path": "/foo", "value": "bar"}]],
+        [STRATEGIC_MERGE_PATCH, None],
+    ],
+)
+def test_get_temp_patches_invalid_spec(patch_type, body):
+    """Make sure that malformed patch specs are rejected"""
+    patch = make_valid_patch(patch_type=patch_type, body=body)
+    with pytest.raises(ConfigError):
+        get_temp_patches(make_patch_cr(), [patch])
+
+
+def test_get_temp_patches_unlisted_kind_warns_once():
+    """Make sure that a kind that is not allowed only warns (once) when the
+    allowed kinds are not enforced
+    """
+    patch = make_valid_patch(api_version="unknown.group/v1")
+    cr = make_patch_cr(api_version="unknown.group/v1")
+    with library_config(
+        temporary_patch={"allowed_kinds": None, "enforce_allowed_kinds": False}
+    ), mock.patch.object(
+        reconcile, "_WARNED_TEMP_PATCH_KINDS", set()
+    ), mock.patch.object(
+        reconcile.log, "warning"
+    ) as warning_mock:
+        assert get_temp_patches(cr, [patch]) == [patch]
+        assert get_temp_patches(cr, [patch]) == [patch]
+        assert warning_mock.call_count == 1
+
+
+def test_get_temp_patches_unlisted_kind_enforced():
+    """Make sure that a kind that is not allowed is rejected when enforcing"""
+    patch = make_valid_patch(api_version="unknown.group/v1")
+    with library_config(
+        temporary_patch={"allowed_kinds": None, "enforce_allowed_kinds": True}
+    ):
+        with pytest.raises(ConfigError):
+            get_temp_patches(make_patch_cr(api_version="unknown.group/v1"), [patch])
+
+
+def test_get_temp_patches_discovered_subclass():
+    """Make sure that kinds for TemporaryPatchController subclasses are
+    discovered automatically
+    """
+
+    @controller(group="my.group", version="v1", kind="MyTemporaryPatch")
+    class MyTemporaryPatchController(TemporaryPatchController):
+        pass
+
+    patch = make_valid_patch(api_version="my.group/v1", kind="MyTemporaryPatch")
+    cr = make_patch_cr(api_version="my.group/v1", kind="MyTemporaryPatch")
+    with library_config(
+        temporary_patch={"allowed_kinds": None, "enforce_allowed_kinds": True}
+    ):
+        assert get_temp_patches(cr, [patch]) == [patch]
+
+
+@pytest.mark.parametrize(
+    ["allowed_kinds", "valid"],
+    [
+        [["oper8.org/v1/TemporaryPatch"], True],
+        [["TemporaryPatch"], True],
+        [["my.group/v1/MyTemporaryPatch"], False],
+        [[], False],
+    ],
+)
+def test_get_temp_patches_explicit_allowed_kinds(allowed_kinds, valid):
+    """Make sure that an explicit list of allowed kinds overrides discovery"""
+    patch = make_valid_patch()
+    with library_config(
+        temporary_patch={"allowed_kinds": allowed_kinds, "enforce_allowed_kinds": True}
+    ):
+        if valid:
+            assert get_temp_patches(make_patch_cr(), [patch]) == [patch]
+        else:
+            with pytest.raises(ConfigError):
+                get_temp_patches(make_patch_cr(), [patch])
+
+
 #############################
 ## _update_resource_status ##
 #############################
@@ -1462,6 +1695,146 @@ def test_reconcile(controller_info, cr, is_finalizer):
         # make sure status gets STABLE
         #   and requeue won't be required if status reaches STABLE
         check_status(dm, cr, ReadyReason.STABLE, UpdatingReason.STABLE)
+
+
+def make_namespace_escape_cr(patch_name, patch_api_version, patch_kind, **kwargs):
+    """Make a CR whose annotation references a single patch for the namespace
+    escape regression tests
+    """
+    return setup_cr(
+        metadata={
+            "annotations": create_temp_patch_annotation(
+                [
+                    {
+                        "name": patch_name,
+                        "api_version": patch_api_version,
+                        "kind": patch_kind,
+                    }
+                ]
+            )
+        },
+        **kwargs,
+    )
+
+
+NAMESPACE_ESCAPE_JSON_PATCH = {
+    "foo": {
+        "foo": [
+            {"op": "replace", "path": "/metadata/namespace", "value": "victim-ns"},
+            {"op": "replace", "path": "/metadata/name", "value": "stolen"},
+        ]
+    }
+}
+NAMESPACE_ESCAPE_MERGE_PATCH = {
+    "foo": {"foo": {"metadata": {"namespace": "victim-ns", "name": "stolen"}}}
+}
+
+
+@pytest.mark.parametrize("patch_type", [JSON_PATCH_6902, STRATEGIC_MERGE_PATCH])
+def test_reconcile_temporary_patch_namespace_escape(patch_type):
+    """Regression test for a temporary patch moving a rendered resource into a
+    different namespace. Both a TemporaryPatch resource and the CR itself
+    are attempted as the patch source.
+    """
+    body = (
+        NAMESPACE_ESCAPE_JSON_PATCH
+        if patch_type == JSON_PATCH_6902
+        else NAMESPACE_ESCAPE_MERGE_PATCH
+    )
+    target = setup_cr()
+    patch = make_patch(
+        patch_type=patch_type,
+        body=body,
+        name="escape",
+        target=target,
+        api_version="oper8.org/v1",
+    )
+    patch_cr = make_namespace_escape_cr("escape", "oper8.org/v1", "TemporaryPatch")
+    self_cr = make_namespace_escape_cr(
+        target.metadata.name,
+        target.apiVersion,
+        target.kind,
+        spec={
+            "apiVersion": target.apiVersion,
+            "kind": target.kind,
+            "name": target.metadata.name,
+            "patchType": patch_type,
+            "patch": body,
+        },
+    )
+    for cr, resources in [(patch_cr, [patch_cr, patch]), (self_cr, [self_cr])]:
+        dm = MockDeployManager(resources=resources)
+        rm = ReconcileManager(deploy_manager=dm)
+        rm.safe_reconcile(ReconcileDummyController, cr)
+        for namespace, name in [
+            ("victim-ns", "stolen"),
+            ("victim-ns", "foo"),
+            (cr.metadata.namespace, "stolen"),
+        ]:
+            assert not dm.has_obj(
+                kind="Foo", name=name, api_version="v1", namespace=namespace
+            )
+
+
+def test_reconcile_temporary_patch_namespace_escape_disable():
+    """Regression test to make sure that a temporary patch cannot redirect the
+    deletion of a disabled component's resource to a different namespace
+    """
+    target = setup_cr()
+    patch = make_patch(
+        patch_type=JSON_PATCH_6902,
+        body={
+            "baz": {
+                "baz": [
+                    {
+                        "op": "replace",
+                        "path": "/metadata/namespace",
+                        "value": "victim-ns",
+                    },
+                    {"op": "replace", "path": "/metadata/name", "value": "victim"},
+                ]
+            }
+        },
+        name="escape",
+        target=target,
+        api_version="oper8.org/v1",
+    )
+    victim = {
+        "kind": "Baz",
+        "apiVersion": "v3",
+        "metadata": {"name": "victim", "namespace": "victim-ns"},
+    }
+    cr = make_namespace_escape_cr("escape", "oper8.org/v1", "TemporaryPatch")
+    dm = MockDeployManager(resources=[cr, patch, victim])
+    rm = ReconcileManager(deploy_manager=dm)
+    rm.safe_reconcile(ReconcileDummyController, cr)
+    assert dm.has_obj(
+        kind="Baz", name="victim", api_version="v3", namespace="victim-ns"
+    )
+
+
+def test_reconcile_temporary_patch_applied():
+    """Positive control for the namespace escape regression test to make sure
+    that a valid temporary patch is applied by a full reconcile
+    """
+    target = setup_cr()
+    patch = make_patch(
+        patch_type=STRATEGIC_MERGE_PATCH,
+        body={"foo": {"foo": {"metadata": {"labels": {"patched": "true"}}}}},
+        name="valid",
+        target=target,
+        api_version="oper8.org/v1",
+    )
+    cr = make_namespace_escape_cr("valid", "oper8.org/v1", "TemporaryPatch")
+    dm = MockDeployManager(resources=[cr, patch])
+    rm = ReconcileManager(deploy_manager=dm)
+    result = rm.reconcile(ReconcileDummyController, cr)
+    assert not result.requeue
+    success, foo = dm.get_object_current_state(
+        kind="Foo", name="foo", api_version="v1", namespace=cr.metadata.namespace
+    )
+    assert success and foo
+    assert foo["metadata"]["labels"] == {"patched": "true"}
 
 
 def test_reconcile_paused():
