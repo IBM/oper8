@@ -73,6 +73,18 @@ rollout_manager:
   deploy_threads: null
   verify_threads: null
 
+# Configuration for how TemporaryPatch resources referenced by a CR's
+# oper8.org/temporary-patches annotation are resolved
+temporary_patch:
+  # Explicit list of kinds that may be used as temporary patch sources. Entries
+  # may be either `kind` or `apiVersion/kind` (e.g. `oper8.org/v1/TemporaryPatch`).
+  # If null, the list is derived from all TemporaryPatchController classes that
+  # are loaded in the operator process.
+  allowed_kinds: null
+  # If true, reject temporary patches whose kind is not in allowed_kinds. If
+  # false, log a warning instead. This will default to true in a future release.
+  enforce_allowed_kinds: false
+
 # Comma separated list of namespaces to watch.
 watch_namespace: ""
 

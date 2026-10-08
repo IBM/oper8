@@ -63,6 +63,14 @@ rollout_manager:
     optional: true
     min: 1
 
+temporary_patch:
+  allowed_kinds:
+    type: list
+    item_type: str
+    optional: true
+  enforce_allowed_kinds:
+    type: bool
+
 ansible_watch_manager:
   log_file_dir:
     type: str
