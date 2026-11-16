@@ -102,6 +102,10 @@ markers = [
     "ansible: marks tests that depend on ansible",
 ]
 addopts = [
+    # dash (pulled in by the dev-graph extra for the session graph script) registers a
+    # pytest plugin that uses deprecated old-style hook marks. It is not needed for
+    # this project's tests, and newer pytest versions error on it, so block it.
+    "-p no:dash",
     "--cov=oper8",
     "--cov-report=term",
     "--cov-report=html",
