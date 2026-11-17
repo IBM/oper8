@@ -93,7 +93,11 @@ class Oper8xComponent(Component):
             resource_definition,
         )
 
-        # Inject namespace override for this component if given
+        # Inject namespace override for this component if given. This is safe
+        # against CR-authored config because ReconcileManager rejects
+        # `namespace` keys from CR-controlled config sources
+        # (configOverrides and the oper8.org/config-defaults annotation), so
+        # the value can only originate from trusted controller defaults.
         namespace_override = session.config.get(self.name, {}).get("namespace")
         if namespace_override is not None:
             log.debug2("Namespace  override for %s: %s", self, namespace_override)
