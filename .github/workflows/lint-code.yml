@@ -32,6 +32,9 @@ jobs:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v10.3.2
       - name: Check Formatting
-        run: uv run --extra dev-fmt ./scripts/fmt.sh
+        # NOTE: The python version is pinned so that the pre-commit hook
+        # environments (e.g. black) are built with a version this repo tests
+        # against rather than whatever the runner image happens to ship.
+        run: uv run --python 3.13 --extra dev-fmt ./scripts/fmt.sh
       - name: Linting
-        run: uv run --extra all --extra dev-fmt --extra dev-test ./scripts/lint.sh
+        run: uv run --python 3.13 --extra all --extra dev-fmt --extra dev-test ./scripts/lint.sh
