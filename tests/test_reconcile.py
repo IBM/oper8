@@ -46,6 +46,7 @@ from oper8.test_helpers.helpers import (
     setup_vcs_project,
 )
 from oper8.vcs import VCSMultiProcessError
+from oper8.x.oper8x_component import Oper8xComponent
 
 log = alog.use_channel("TEST")
 
@@ -988,6 +989,64 @@ example_reconcile_config_map = {
             aconfig.Config({}),
             ConfigError,
         ],
+        # Test that CR-controlled config may not override component namespaces
+        # (namespace escape regression)
+        [
+            aconfig.Config(
+                {constants.CONFIG_OVERRIDES: {"foo": {"namespace": "victim-ns"}}}
+            ),
+            aconfig.Config({}),
+            [],
+            aconfig.Config({}),
+            ConfigError,
+        ],
+        # Nested namespace keys that are not direct per-component overrides
+        # are not placement-affecting and are allowed
+        [
+            aconfig.Config(
+                {
+                    constants.CONFIG_OVERRIDES: {
+                        "foo": {"bar": {"namespace": "other-ns"}}
+                    }
+                }
+            ),
+            aconfig.Config({}),
+            [],
+            aconfig.Config({"foo": {"bar": {"namespace": "other-ns"}}}),
+            None,
+        ],
+        # A non-mapping configOverrides value is rejected
+        [
+            aconfig.Config({constants.CONFIG_OVERRIDES: "not-a-mapping"}),
+            aconfig.Config({}),
+            [],
+            aconfig.Config({}),
+            ConfigError,
+        ],
+        # Config from a ConfigMap referenced by CR annotation may not override
+        # component namespaces either
+        [
+            aconfig.Config(
+                {
+                    "metadata": {
+                        "annotations": {
+                            constants.CONFIG_DEFAULTS_ANNOTATION_NAME: "config-cm"
+                        }
+                    }
+                }
+            ),
+            aconfig.Config({}),
+            [
+                {
+                    "kind": "ConfigMap",
+                    "apiVersion": "v1",
+                    "metadata": {"name": "config-cm"},
+                    "data": {"foo": {"namespace": "victim-ns"}},
+                }
+            ],
+            aconfig.Config({}),
+            ConfigError,
+        ],
     ],
 )
 def test_get_reconcile_config(
@@ -1835,6 +1894,122 @@ def test_reconcile_temporary_patch_applied():
     )
     assert success and foo
     assert foo["metadata"]["labels"] == {"patched": "true"}
+
+
+class ConfigOverridesComponent(Oper8xComponent):
+    """Simple Oper8xComponent that deploys a single Secret. This mirrors the
+    component type used in the reported configOverrides namespace escape.
+    """
+
+    name = "config-overridden"
+
+    def build_chart(self, session):
+        self.add_resource(
+            "secret",
+            {
+                "apiVersion": "v1",
+                "kind": "Secret",
+                "metadata": {"name": "poc-cred"},
+                "type": "Opaque",
+                "data": {"password": "c2VjcmV0"},
+            },
+        )
+
+
+class ConfigOverridesController(DummyController):
+    """Controller that sets up a single Oper8xComponent"""
+
+    def setup_components(self, session):
+        ConfigOverridesComponent(session=session)
+
+
+def test_reconcile_config_overrides_namespace_escape():
+    """Regression test for a CR using its top-level configOverrides to move a
+    rendered resource into a different namespace. The reconcile must fail
+    loudly and nothing may be deployed outside the CR's namespace.
+    """
+    cr = setup_cr(
+        configOverrides={ConfigOverridesComponent.name: {"namespace": "victim-ns"}}
+    )
+    dm = MockDeployManager(resources=[cr])
+    rm = ReconcileManager(deploy_manager=dm)
+    rm.safe_reconcile(ConfigOverridesController, cr)
+
+    # Nothing may be deployed to the victim namespace
+    assert not dm.has_obj(
+        kind="Secret", name="poc-cred", api_version="v1", namespace="victim-ns"
+    )
+
+    # The failure must be reported in the CR status
+    check_status(dm, cr, ReadyReason.CONFIG_ERROR, UpdatingReason.ERRORED)
+
+
+def test_reconcile_config_overrides_namespace_escape_configmap():
+    """Regression test for a CR pointing its config-defaults annotation at a
+    ConfigMap that tries to move a rendered resource into a different
+    namespace
+    """
+    cr = setup_cr(
+        metadata={
+            "annotations": {constants.CONFIG_DEFAULTS_ANNOTATION_NAME: "attacker-cm"}
+        }
+    )
+    attacker_cm = {
+        "kind": "ConfigMap",
+        "apiVersion": "v1",
+        "metadata": {"name": "attacker-cm", "namespace": cr.metadata.namespace},
+        "data": {ConfigOverridesComponent.name: {"namespace": "victim-ns"}},
+    }
+    dm = MockDeployManager(resources=[cr, attacker_cm])
+    rm = ReconcileManager(deploy_manager=dm)
+    rm.safe_reconcile(ConfigOverridesController, cr)
+    assert not dm.has_obj(
+        kind="Secret", name="poc-cred", api_version="v1", namespace="victim-ns"
+    )
+    check_status(dm, cr, ReadyReason.CONFIG_ERROR, UpdatingReason.ERRORED)
+
+
+def test_reconcile_config_overrides_valid():
+    """Positive control for the configOverrides namespace escape regression
+    tests to make sure that configOverrides values that do not affect
+    placement still flow through to the session config and deploy normally
+    """
+    cr = setup_cr(configOverrides={ConfigOverridesComponent.name: {"size": "big"}})
+    dm = MockDeployManager(resources=[cr])
+    rm = ReconcileManager(deploy_manager=dm)
+    result = rm.reconcile(ConfigOverridesController, cr)
+    assert not result.requeue
+    assert dm.has_obj(
+        kind="Secret",
+        name="poc-cred",
+        api_version="v1",
+        namespace=cr.metadata.namespace,
+    )
+
+
+def test_reconcile_controller_config_namespace_override():
+    """Make sure that per-component namespace overrides from trusted
+    controller config are still applied by a full reconcile, including when
+    the CR carries other (non-placement) configOverrides for the same
+    component
+    """
+    cr = setup_cr(configOverrides={ConfigOverridesComponent.name: {"size": "big"}})
+    dm = MockDeployManager(resources=[cr])
+    rm = ReconcileManager(deploy_manager=dm)
+    controller = ConfigOverridesController(
+        config_defaults={ConfigOverridesComponent.name: {"namespace": "component-ns"}}
+    )
+    result = rm.reconcile(controller, cr)
+    assert not result.requeue
+    assert dm.has_obj(
+        kind="Secret", name="poc-cred", api_version="v1", namespace="component-ns"
+    )
+    assert not dm.has_obj(
+        kind="Secret",
+        name="poc-cred",
+        api_version="v1",
+        namespace=cr.metadata.namespace,
+    )
 
 
 def test_reconcile_paused():
