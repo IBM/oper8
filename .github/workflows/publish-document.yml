@@ -19,6 +19,8 @@ jobs:
         name: Setup Python
         with:
           python-version: 3.15
+      - uses: astral-sh/setup-uv@v10.3.2
+        name: Setup uv
       - name: Set Cache ID
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
       - uses: actions/cache@v6

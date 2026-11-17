@@ -21,8 +21,10 @@ dependencies = [
     "jsonpatch>=1.26,<2",
     "semver>=2.13.0,<4",
     "kubernetes>=25.3.0,<35",
-    # Until https://github.com/libgit2/pygit2/issues/1292 is resolved
-    "pygit2>=1.12.0,<1.19",
+    # NOTE: pygit2 1.15 removed Oid.hex (https://github.com/libgit2/pygit2/issues/1292),
+    # which this library worked around by using str(oid). Versions 1.19+ require
+    # Python >= 3.11, so Python 3.10 installs will resolve to the 1.18.x line.
+    "pygit2>=1.12.0,<1.22",
 ]
 
 [project.scripts]
@@ -102,6 +104,10 @@ markers = [
     "ansible: marks tests that depend on ansible",
 ]
 addopts = [
+    # dash (pulled in by the dev-graph extra for the session graph script) registers a
+    # pytest plugin that uses deprecated old-style hook marks. It is not needed for
+    # this project's tests, and newer pytest versions error on it, so block it.
+    "-p no:dash",
     "--cov=oper8",
     "--cov-report=term",
     "--cov-report=html",
