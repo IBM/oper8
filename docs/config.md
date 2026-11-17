@@ -18,7 +18,7 @@ The annotation and `configOverrides` can be written by anyone who can edit the
 CR (or, for the annotation, the ConfigMap it names in the CR's namespace), so
 oper8 does not trust their contents. Config values are applied by the operator
 with the operator's own permissions, so untrusted config must not be able to
-direct *where* the operator deploys resources.
+direct _where_ the operator deploys resources.
 
 The following rule is always enforced:
 

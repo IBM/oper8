@@ -943,7 +943,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         )
 
     @staticmethod
-    def _check_cr_config_namespace_overrides(cr_config: aconfig.Config, source_name: str):
+    def _check_cr_config_namespace_overrides(
+        cr_config: aconfig.Config, source_name: str
+    ):
         """Check that config authored on or referenced from the CR does not
         attempt to override the namespace for any component.
 
