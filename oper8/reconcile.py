@@ -892,6 +892,9 @@ class ReconcileManager:  # pylint: disable=too-many-lines
         annotations = metadata.get("annotations", {})
         namespace = metadata.get("namespace")
         cr_config_defaults = cr_manifest.get(constants.CONFIG_OVERRIDES, {})
+        self._check_cr_config_namespace_overrides(
+            cr_config_defaults, f"CR field [{constants.CONFIG_OVERRIDES}]"
+        )
         annotation_config_defaults = {}
         if constants.CONFIG_DEFAULTS_ANNOTATION_NAME in annotations:
             log.debug("Pulling config_defaults based on annotation")
@@ -929,11 +932,56 @@ class ReconcileManager:  # pylint: disable=too-many-lines
             annotation_config_defaults = aconfig.Config(
                 config_defaults_content, override_env_vars=False
             )
+            self._check_cr_config_namespace_overrides(
+                annotation_config_defaults,
+                f"config defaults ConfigMap [{config_defaults_cm_name}]",
+            )
 
         return merge_configs(
             copy.deepcopy(controller_defaults),
             merge_configs(annotation_config_defaults, cr_config_defaults),
         )
+
+    @staticmethod
+    def _check_cr_config_namespace_overrides(
+        cr_config: aconfig.Config, source_name: str
+    ):
+        """Check that config authored on or referenced from the CR does not
+        attempt to override the namespace for any component.
+
+        The session config is assembled by merging controller-authored config
+        (trusted) with config from the CR itself and from ConfigMaps
+        referenced by CR annotations (untrusted). Because anyone who can edit
+        the CR can author or select these values, they must not be able to
+        influence where the operator deploys resources. A per-component
+        `namespace` key would let the author of the CR direct the operator's
+        ServiceAccount to deploy resources into a namespace that the CR author
+        has no permission to write to, so such keys are rejected outright.
+
+        Args:
+            cr_config:  aconfig.Config
+                The untrusted config content to check
+            source_name:  str
+                A human-readable description of the source of the config,
+                used in error messages
+
+        Raises:
+            ConfigError: If the config is not a mapping or if it sets the
+                `namespace` for any component
+        """
+        assert_config(
+            isinstance(cr_config, dict),
+            f"Config from [{source_name}] must be a mapping",
+        )
+        for component_name, component_config in cr_config.items():
+            if isinstance(component_config, dict) and "namespace" in component_config:
+                msg = (
+                    f"Config from [{source_name}] may not set the namespace for "
+                    f"component [{component_name}]. Per-component namespace "
+                    "overrides are not allowed from CR-controlled config."
+                )
+                log.error(msg)
+                raise ConfigError(msg)
 
     def _get_temp_patches(  # pylint: disable=too-many-locals
         self, deploy_manager: DeployManagerBase, cr_manifest: aconfig.Config
