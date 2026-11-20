@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
       - name: Check Formatting
         # NOTE: The python version is pinned so that the pre-commit hook
         # environments (e.g. black) are built with a version this repo tests
